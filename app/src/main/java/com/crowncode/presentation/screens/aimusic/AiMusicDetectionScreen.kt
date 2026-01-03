@@ -1056,7 +1056,3 @@ private fun ErrorView(
         }
     }
 }
-
-private fun Modifier.offset(x: androidx.compose.ui.unit.Dp, y: androidx.compose.ui.unit.Dp): Modifier {
-    return this.then(Modifier.padding(start = if (x.value > 0) x else 0.dp, top = if (y.value > 0) y else 0.dp))
-}
