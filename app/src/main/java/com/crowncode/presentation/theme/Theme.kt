@@ -4,71 +4,66 @@ import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Gold,
+private val CrownCodeColorScheme = darkColorScheme(
+    // Primary
+    primary = Primary,
     onPrimary = TextOnPrimary,
-    primaryContainer = GoldDark,
+    primaryContainer = Secondary,
     onPrimaryContainer = TextPrimary,
-    secondary = SurfaceVariantDark,
-    onSecondary = TextPrimary,
-    secondaryContainer = SurfaceVariantDark,
-    onSecondaryContainer = TextPrimary,
-    tertiary = GoldLight,
-    onTertiary = TextOnPrimary,
-    background = BackgroundDark,
-    onBackground = TextPrimary,
-    surface = SurfaceDark,
-    onSurface = TextPrimary,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = TextSecondary,
-    error = Error,
-    onError = TextPrimary
-)
 
-private val LightColorScheme = lightColorScheme(
-    primary = GoldDark,
-    onPrimary = TextPrimary,
-    primaryContainer = GoldLight,
-    onPrimaryContainer = TextOnPrimary,
-    secondary = SurfaceVariantLight,
-    onSecondary = TextOnPrimary,
-    secondaryContainer = SurfaceVariantLight,
-    onSecondaryContainer = TextOnPrimary,
-    tertiary = Gold,
+    // Secondary
+    secondary = Secondary,
+    onSecondary = TextPrimary,
+    secondaryContainer = SurfaceAlt,
+    onSecondaryContainer = TextPrimary,
+
+    // Tertiary
+    tertiary = Accent,
     onTertiary = TextOnPrimary,
-    background = BackgroundLight,
-    onBackground = TextOnPrimary,
-    surface = SurfaceLight,
-    onSurface = TextOnPrimary,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = TextOnPrimary,
+    tertiaryContainer = SurfaceElevated,
+    onTertiaryContainer = TextPrimary,
+
+    // Background & Surface
+    background = Background,
+    onBackground = TextPrimary,
+    surface = Surface,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceAlt,
+    onSurfaceVariant = TextSecondary,
+    surfaceContainerHighest = SurfaceElevated,
+
+    // Outline
+    outline = Border,
+    outlineVariant = BorderLight,
+
+    // Status
     error = Error,
-    onError = TextPrimary
+    onError = TextPrimary,
+    errorContainer = Error.copy(alpha = 0.2f),
+    onErrorContainer = Error
 )
 
 @Composable
 fun CrownCodeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = CrownCodeColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
+            window.statusBarColor = Background.toArgb()
+            window.navigationBarColor = Background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
             }
         }
     }
