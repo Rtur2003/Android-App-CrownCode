@@ -92,7 +92,6 @@ import com.crowncode.presentation.theme.Background
 import com.crowncode.presentation.theme.Border
 import com.crowncode.presentation.theme.BorderLight
 import com.crowncode.presentation.theme.Error
-import com.crowncode.presentation.theme.GlowColor
 import com.crowncode.presentation.theme.GradientEnd
 import com.crowncode.presentation.theme.GradientMiddle
 import com.crowncode.presentation.theme.GradientStart
