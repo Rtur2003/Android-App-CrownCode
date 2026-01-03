@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CrownCode</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Ana Sayfa</string>
+    <string name="nav_ai_music">AI Müzik</string>
+    <string name="nav_ml_toolkit">ML Toolkit</string>
+    <string name="nav_search">Arama</string>
+
+    <!-- Common -->
+    <string name="loading">Yükleniyor…</string>
+    <string name="error">Hata</string>
+    <string name="retry">Tekrar Dene</string>
+    <string name="cancel">İptal</string>
+    <string name="ok">Tamam</string>
+
+    <!-- AI Music Detection -->
+    <string name="ai_music_title">AI Müzik Tespiti</string>
+    <string name="ai_music_subtitle">Yapay zeka ile oluşturulmuş müzikleri tespit edin</string>
+    <string name="upload_audio">Ses Dosyası Yükle</string>
+    <string name="analyzing">Analiz ediliyor…</string>
+    <string name="result_ai">AI Tarafından Oluşturulmuş</string>
+    <string name="result_human">İnsan Tarafından Yapılmış</string>
+    <string name="confidence">Güven Oranı</string>
+
+    <!-- ML Toolkit -->
+    <string name="ml_toolkit_title">ML Toolkit</string>
+    <string name="ml_toolkit_subtitle">Veri manipülasyonu ve augmentation araçları</string>
+    <string name="select_data_type">Veri Tipi Seçin</string>
+    <string name="image_data">Görüntü</string>
+    <string name="audio_data">Ses</string>
+    <string name="process">İşle</string>
+    <string name="download">İndir</string>
+</resources>
