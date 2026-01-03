@@ -648,11 +648,7 @@ private fun InfoCard() {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Warning.copy(alpha = 0.08f)),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(Warning.copy(alpha = 0.3f), Warning.copy(alpha = 0.1f))
-            )
-        )
+        border = BorderStroke(1.dp, Warning.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(20.dp),
