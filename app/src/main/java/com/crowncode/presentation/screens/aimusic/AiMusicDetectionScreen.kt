@@ -511,9 +511,7 @@ private fun UrlInputCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Surface),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(listOf(Border, BorderLight))
-        )
+        border = BorderStroke(1.dp, Border)
     ) {
         Column(
             modifier = Modifier.padding(24.dp)
