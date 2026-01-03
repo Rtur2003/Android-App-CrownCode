@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.theme.Accent
 import com.crowncode.presentation.theme.Background
 import com.crowncode.presentation.theme.Border
