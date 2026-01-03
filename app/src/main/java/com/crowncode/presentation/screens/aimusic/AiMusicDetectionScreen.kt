@@ -595,54 +595,6 @@ private fun UrlInputCard(
 }
 
 @Composable
-private fun GradientButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            disabledContainerColor = Color.Transparent
-        ),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = if (enabled) {
-                        Brush.linearGradient(
-                            colors = listOf(GradientStart, GradientMiddle, GradientEnd)
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                GradientStart.copy(alpha = 0.3f),
-                                GradientEnd.copy(alpha = 0.3f)
-                            )
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (enabled) TextOnPrimary else TextMuted
-            )
-        }
-    }
-}
-
-@Composable
 private fun InfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
