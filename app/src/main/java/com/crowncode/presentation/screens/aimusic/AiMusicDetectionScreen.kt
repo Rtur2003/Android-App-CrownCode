@@ -879,11 +879,7 @@ private fun ResultView(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(containerColor = resultColor.copy(alpha = 0.08f)),
-            border = CardDefaults.outlinedCardBorder().copy(
-                brush = Brush.linearGradient(
-                    listOf(resultColor.copy(alpha = 0.4f), resultColor.copy(alpha = 0.1f))
-                )
-            )
+            border = BorderStroke(1.dp, resultColor.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier.padding(28.dp),
