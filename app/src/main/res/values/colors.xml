@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors - Golden/Crown Theme -->
+    <color name="primary">#D4AF37</color>
+    <color name="primary_dark">#B8860B</color>
+    <color name="primary_light">#FFD700</color>
+
+    <!-- Secondary Colors -->
+    <color name="secondary">#1E1E2E</color>
+    <color name="secondary_dark">#11111B</color>
+
+    <!-- Background Colors -->
+    <color name="background_dark">#0F0F1A</color>
+    <color name="surface_dark">#1A1A2E</color>
+    <color name="surface_variant_dark">#252540</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_on_primary">#000000</color>
+
+    <!-- Status Colors -->
+    <color name="success">#4CAF50</color>
+    <color name="error">#F44336</color>
+    <color name="warning">#FF9800</color>
+    <color name="info">#2196F3</color>
+</resources>
