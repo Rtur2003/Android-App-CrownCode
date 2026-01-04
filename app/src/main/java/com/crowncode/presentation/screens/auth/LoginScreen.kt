@@ -8,14 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,16 +25,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,21 +56,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.crowncode.presentation.components.BackgroundWithGlow
-import com.crowncode.presentation.components.CrownCodeLogo
 import com.crowncode.presentation.components.GradientButton
-import com.crowncode.presentation.components.LogoSize
 import com.crowncode.presentation.components.PasswordTextField
 import com.crowncode.presentation.components.SocialLoginButton
 import com.crowncode.presentation.components.SocialProvider
+import com.crowncode.presentation.theme.Background
 import com.crowncode.presentation.theme.Border
 import com.crowncode.presentation.theme.Primary
+import com.crowncode.presentation.theme.Surface
 import com.crowncode.presentation.theme.SurfaceAlt
 import com.crowncode.presentation.theme.TextMuted
 import com.crowncode.presentation.theme.TextPrimary
 import com.crowncode.presentation.theme.TextSecondary
 import com.crowncode.presentation.theme.Warning
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onNavigateBack: () -> Unit,
@@ -86,48 +91,54 @@ fun LoginScreen(
         }
     }
 
-    BackgroundWithGlow {
-        Column(
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Background),
+        containerColor = Background,
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Geri",
+                            tint = TextPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .padding(paddingValues)
+                .imePadding(),
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Top Bar
-            IconButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.padding(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Geri",
-                    tint = TextPrimary
-                )
-            }
-
             Column(
                 modifier = Modifier
+                    .widthIn(max = 400.dp)
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
+                    .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Logo
-                CrownCodeLogo(
-                    size = LogoSize.Medium,
-                    animated = false
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Title
+                // Header Section
                 Text(
                     text = "Hoş Geldiniz",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -135,12 +146,13 @@ fun LoginScreen(
                 Text(
                     text = "Devam etmek için giriş yapın",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Social Login Buttons
+                // Social Login Section
                 SocialLoginButton(
                     provider = SocialProvider.GOOGLE,
                     text = "Google ile devam et",
@@ -182,7 +194,7 @@ fun LoginScreen(
                             modifier = Modifier.size(20.dp)
                         )
                     },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Primary,
                         unfocusedBorderColor = Border,
@@ -215,18 +227,18 @@ fun LoginScreen(
                 )
 
                 // Forgot Password
-                TextButton(
-                    onClick = { /* TODO: Forgot password */ },
-                    modifier = Modifier.align(Alignment.End)
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
-                    Text(
-                        text = "Şifremi Unuttum",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Primary
-                    )
+                    TextButton(onClick = { /* TODO */ }) {
+                        Text(
+                            text = "Şifremi Unuttum",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Primary
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
 
                 // Error Message
                 if (uiState is AuthUiState.Error) {
@@ -234,9 +246,14 @@ fun LoginScreen(
                         text = (uiState as AuthUiState.Error).message,
                         style = MaterialTheme.typography.bodySmall,
                         color = Warning,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Login Button
                 GradientButton(
@@ -253,6 +270,7 @@ fun LoginScreen(
 
                 // Sign Up Link
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -274,10 +292,12 @@ fun LoginScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Demo Info Card
                 DemoInfoCard()
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -293,11 +313,7 @@ private fun DividerWithText(text: String) {
             modifier = Modifier
                 .weight(1f)
                 .height(1.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color.Transparent, Border)
-                    )
-                )
+                .background(Border)
         )
         Text(
             text = text,
@@ -309,11 +325,7 @@ private fun DividerWithText(text: String) {
             modifier = Modifier
                 .weight(1f)
                 .height(1.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Border, Color.Transparent)
-                    )
-                )
+                .background(Border)
         )
     }
 }
@@ -322,28 +334,30 @@ private fun DividerWithText(text: String) {
 private fun DemoInfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Warning.copy(alpha = 0.08f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = Icons.Outlined.Info,
                 contentDescription = null,
-                tint = Warning,
+                tint = Primary,
                 modifier = Modifier.size(20.dp)
             )
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Demo Modu",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = Warning
+                    color = TextPrimary
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Giriş simüle edilmektedir. Herhangi bir email/şifre ile giriş yapabilirsiniz.",
+                    text = "Herhangi bir email/şifre ile giriş yapabilirsiniz.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary,
                     lineHeight = 18.sp
