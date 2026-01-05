@@ -75,7 +75,7 @@ fun PasswordTextField(
             },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             isError = isError,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = if (isError) Error else Primary,
                 unfocusedBorderColor = if (isError) Error else Border,
