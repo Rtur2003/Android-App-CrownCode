@@ -51,11 +51,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.crowncode.presentation.components.AurisLogo
+import com.crowncode.presentation.components.AurisLogoSize
 import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.components.PasswordTextField
 import com.crowncode.presentation.components.SocialLoginButton
 import com.crowncode.presentation.components.SocialProvider
-import com.crowncode.presentation.theme.Background
+import com.crowncode.presentation.components.SoundWaveBackground
+import com.crowncode.presentation.theme.AurisBackground
 import com.crowncode.presentation.theme.Border
 import com.crowncode.presentation.theme.Primary
 import com.crowncode.presentation.theme.SurfaceAlt
@@ -87,258 +90,276 @@ fun SignUpScreen(
         }
     }
 
-    Scaffold(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background),
-        containerColor = Background,
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Geri",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+            .background(AurisBackground)
+    ) {
+        // Subtle sound wave background
+        SoundWaveBackground(
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.05f
+        )
+
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Geri",
+                                tint = TextPrimary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .imePadding(),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column(
+            }
+        ) { paddingValues ->
+            Box(
                 modifier = Modifier
-                    .widthIn(max = 400.dp)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp)
-                    .navigationBarsPadding(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .imePadding(),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Header
-                Text(
-                    text = "Hesap Oluştur",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "CrownCode'a bugün katılın",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Social Buttons
-                SocialLoginButton(
-                    provider = SocialProvider.GOOGLE,
-                    text = "Google ile kayıt ol",
-                    onClick = { viewModel.signUpWithGoogle() },
-                    isLoading = isGoogleLoading
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                SocialLoginButton(
-                    provider = SocialProvider.APPLE,
-                    text = "Apple ile kayıt ol",
-                    onClick = { viewModel.signUpWithApple() },
-                    isLoading = isAppleLoading
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Divider
-                DividerWithText(text = "veya")
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Name Field
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = {
-                        viewModel.onNameChange(it)
-                        viewModel.clearError()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Ad Soyad") },
-                    placeholder = { Text("Adınızı girin", color = TextMuted) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        unfocusedBorderColor = Border,
-                        cursorColor = Primary,
-                        focusedContainerColor = SurfaceAlt,
-                        unfocusedContainerColor = SurfaceAlt
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Email Field
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = {
-                        viewModel.onEmailChange(it)
-                        viewModel.clearError()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Email") },
-                    placeholder = { Text("ornek@email.com", color = TextMuted) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        unfocusedBorderColor = Border,
-                        cursorColor = Primary,
-                        focusedContainerColor = SurfaceAlt,
-                        unfocusedContainerColor = SurfaceAlt
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Password Field
-                PasswordTextField(
-                    value = password,
-                    onValueChange = {
-                        viewModel.onPasswordChange(it)
-                        viewModel.clearError()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = "Şifre",
-                    placeholder = "En az 6 karakter",
-                    imeAction = ImeAction.Done,
-                    onImeAction = { keyboardController?.hide() }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Terms Checkbox
-                Row(
+                Column(
                     modifier = Modifier
+                        .widthIn(max = 400.dp)
                         .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { viewModel.onTermsAcceptedChange(!termsAccepted) }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                        .navigationBarsPadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Checkbox(
-                        checked = termsAccepted,
-                        onCheckedChange = { viewModel.onTermsAcceptedChange(it) },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = Primary,
-                            uncheckedColor = TextMuted,
-                            checkmarkColor = TextPrimary
-                        )
-                    )
-                    Text(
-                        text = "Kullanım Koşulları ve Gizlilik Politikasını kabul ediyorum",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Error Message
-                if (uiState is AuthUiState.Error) {
+                    // Auris Mini Logo
+                    AurisLogo(
+                        size = AurisLogoSize.Small,
+                        animated = false
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Header
                     Text(
-                        text = (uiState as AuthUiState.Error).message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Warning,
-                        textAlign = TextAlign.Center,
+                        text = "Hesap Oluştur",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Auris'e bugün katılın",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Social Buttons
+                    SocialLoginButton(
+                        provider = SocialProvider.GOOGLE,
+                        text = "Google ile kayıt ol",
+                        onClick = { viewModel.signUpWithGoogle() },
+                        isLoading = isGoogleLoading
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    SocialLoginButton(
+                        provider = SocialProvider.APPLE,
+                        text = "Apple ile kayıt ol",
+                        onClick = { viewModel.signUpWithApple() },
+                        isLoading = isAppleLoading
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Divider
+                    DividerWithText(text = "veya")
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Name Field
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = {
+                            viewModel.onNameChange(it)
+                            viewModel.clearError()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Ad Soyad") },
+                        placeholder = { Text("Adınızı girin", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = Border,
+                            cursorColor = Primary,
+                            focusedContainerColor = SurfaceAlt,
+                            unfocusedContainerColor = SurfaceAlt
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Email Field
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            viewModel.onEmailChange(it)
+                            viewModel.clearError()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Email") },
+                        placeholder = { Text("ornek@email.com", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = Border,
+                            cursorColor = Primary,
+                            focusedContainerColor = SurfaceAlt,
+                            unfocusedContainerColor = SurfaceAlt
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Password Field
+                    PasswordTextField(
+                        value = password,
+                        onValueChange = {
+                            viewModel.onPasswordChange(it)
+                            viewModel.clearError()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = "Şifre",
+                        placeholder = "En az 6 karakter",
+                        imeAction = ImeAction.Done,
+                        onImeAction = { keyboardController?.hide() }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Terms Checkbox
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Sign Up Button
-                GradientButton(
-                    text = "Hesap Oluştur",
-                    onClick = {
-                        keyboardController?.hide()
-                        viewModel.signUpWithEmail()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isLoading = uiState is AuthUiState.Loading
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Login Link
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Zaten hesabınız var mı? ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = "Giriş Yap",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Primary,
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onNavigateToLogin
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { viewModel.onTermsAcceptedChange(!termsAccepted) }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = termsAccepted,
+                            onCheckedChange = { viewModel.onTermsAcceptedChange(it) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = Primary,
+                                uncheckedColor = TextMuted,
+                                checkmarkColor = TextPrimary
+                            )
                         )
-                    )
-                }
+                        Text(
+                            text = "Kullanım Koşulları ve Gizlilik Politikasını kabul ediyorum",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                    // Error Message
+                    if (uiState is AuthUiState.Error) {
+                        Text(
+                            text = (uiState as AuthUiState.Error).message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Warning,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Sign Up Button
+                    GradientButton(
+                        text = "Hesap Oluştur",
+                        onClick = {
+                            keyboardController?.hide()
+                            viewModel.signUpWithEmail()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        isLoading = uiState is AuthUiState.Loading
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Login Link
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Zaten hesabınız var mı? ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "Giriş Yap",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Primary,
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onNavigateToLogin
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
     }
