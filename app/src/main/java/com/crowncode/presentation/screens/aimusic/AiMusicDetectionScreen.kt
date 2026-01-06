@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.crowncode.presentation.components.DividerWithText
 import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.theme.Accent
 import com.crowncode.presentation.theme.Background
@@ -189,7 +190,7 @@ fun AiMusicDetectionScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Divider with text
-                    DividerWithText(text = "veya")
+                    DividerWithText(text = "veya", useGradient = true)
 
                     Spacer(modifier = Modifier.height(20.dp))
 
@@ -462,41 +463,6 @@ private fun UploadCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DividerWithText(text: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color.Transparent, Border)
-                    )
-                )
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Border, Color.Transparent)
-                    )
-                )
-        )
     }
 }
 
