@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.crowncode.presentation.theme.GradientEnd
 import com.crowncode.presentation.theme.GradientMiddle
 import com.crowncode.presentation.theme.GradientStart
-import com.crowncode.presentation.theme.Primary
 import kotlin.random.Random
 
 @Composable
