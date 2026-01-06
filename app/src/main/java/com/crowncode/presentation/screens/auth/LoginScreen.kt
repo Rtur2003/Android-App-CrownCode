@@ -55,6 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crowncode.presentation.components.AurisLogo
 import com.crowncode.presentation.components.AurisLogoSize
+import com.crowncode.presentation.components.DividerWithText
 import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.components.PasswordTextField
 import com.crowncode.presentation.components.SocialLoginButton
@@ -318,33 +319,6 @@ fun LoginScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DividerWithText(text: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(Border)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(Border)
-        )
     }
 }
 

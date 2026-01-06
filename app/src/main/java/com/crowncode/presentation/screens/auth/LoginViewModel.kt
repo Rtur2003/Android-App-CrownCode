@@ -2,6 +2,7 @@ package com.crowncode.presentation.screens.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crowncode.util.ValidationUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,12 +38,17 @@ class LoginViewModel @Inject constructor() : ViewModel() {
     }
 
     fun loginWithEmail() {
-        if (_email.value.isBlank()) {
-            _uiState.value = AuthUiState.Error("Lütfen email adresinizi girin")
+        // Validate email
+        val emailError = ValidationUtils.getEmailError(_email.value)
+        if (emailError != null) {
+            _uiState.value = AuthUiState.Error(emailError)
             return
         }
-        if (_password.value.isBlank()) {
-            _uiState.value = AuthUiState.Error("Lütfen şifrenizi girin")
+
+        // Validate password
+        val passwordError = ValidationUtils.getPasswordError(_password.value)
+        if (passwordError != null) {
+            _uiState.value = AuthUiState.Error(passwordError)
             return
         }
 
