@@ -40,3 +40,13 @@ val GradientEnd = Color(0xFF8A5F2B)       // Deep bronze
 
 // Glow Effect
 val GlowColor = Color(0x40C99347)         // Amber glow with alpha
+
+// ============================================================================
+// AURIS AI BRAND COLORS
+// ============================================================================
+
+val AurisPrimary = Color(0xFFE7C77A)       // Same gold as Primary
+val AurisGlow = Color(0x40E7C77A)          // Gold glow with alpha
+val AurisAccent = Color(0xFFFFD700)        // Bright gold for highlights
+val SoundWaveColor = Color(0xFFD4AF37)     // Sound wave strokes
+val AurisBackground = Color(0xFF0D0B09)    // Slightly different dark for Auris screens
