@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.crowncode.presentation.theme.Border
 import com.crowncode.presentation.theme.TextMuted
@@ -40,14 +41,12 @@ fun DividerWithText(
                 .weight(1f)
                 .height(1.dp)
                 .background(
-                    if (useGradient) {
+                    brush = if (useGradient) {
                         Brush.horizontalGradient(
                             colors = listOf(Color.Transparent, Border)
                         )
                     } else {
-                        Brush.horizontalGradient(
-                            colors = listOf(Border, Border)
-                        )
+                        SolidColor(Border)
                     }
                 )
         )
@@ -62,14 +61,12 @@ fun DividerWithText(
                 .weight(1f)
                 .height(1.dp)
                 .background(
-                    if (useGradient) {
+                    brush = if (useGradient) {
                         Brush.horizontalGradient(
                             colors = listOf(Border, Color.Transparent)
                         )
                     } else {
-                        Brush.horizontalGradient(
-                            colors = listOf(Border, Border)
-                        )
+                        SolidColor(Border)
                     }
                 )
         )
