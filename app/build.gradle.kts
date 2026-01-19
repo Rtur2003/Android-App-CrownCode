@@ -20,13 +20,18 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Production API URL
         buildConfigField("String", "API_BASE_URL", "\"https://hasanarthuraltuntas.xyz/api/\"")
+        // HuggingFace Backend URL - update with your space name
+        buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://hasanarthuraltuntas.xyz/api/\"")
+            // Use HuggingFace backend for development
+            buildConfigField("String", "API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
+            buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
         }
         release {
             isMinifyEnabled = true
@@ -35,7 +40,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Production URL
             buildConfigField("String", "API_BASE_URL", "\"https://hasanarthuraltuntas.xyz/api/\"")
+            buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
         }
     }
 
