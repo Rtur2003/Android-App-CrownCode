@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import com.crowncode.presentation.screens.aimusic.AiMusicDetectionScreen
 import com.crowncode.presentation.screens.auth.LoginScreen
 import com.crowncode.presentation.screens.auth.SignUpScreen
+import com.crowncode.presentation.screens.history.HistoryScreen
 import com.crowncode.presentation.screens.welcome.WelcomeScreen
 
 @Composable
@@ -114,7 +115,31 @@ fun CrownCodeNavHost() {
             },
             exitTransition = { fadeOut(tween(200)) }
         ) {
-            AiMusicDetectionScreen()
+            AiMusicDetectionScreen(
+                onNavigateToHistory = {
+                    navController.navigate(Route.History)
+                }
+            )
+        }
+
+        // History Screen
+        composable<Route.History>(
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    tween(300)
+                )
+            }
+        ) {
+            HistoryScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

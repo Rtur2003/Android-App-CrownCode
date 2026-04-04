@@ -115,6 +115,7 @@ import com.crowncode.presentation.theme.Warning
 
 @Composable
 fun AiMusicDetectionScreen(
+    onNavigateToHistory: () -> Unit = {},
     viewModel: AiMusicViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
