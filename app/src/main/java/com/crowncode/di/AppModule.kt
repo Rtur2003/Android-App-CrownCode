@@ -1,6 +1,10 @@
 package com.crowncode.di
 
+import android.app.Application
+import androidx.room.Room
 import com.crowncode.BuildConfig
+import com.crowncode.data.local.CrownCodeDatabase
+import com.crowncode.data.local.dao.AnalysisHistoryDao
 import com.crowncode.data.remote.api.AnalyzeApi
 import com.crowncode.data.repository.AnalysisRepositoryImpl
 import com.crowncode.domain.repository.AnalysisRepository
@@ -65,6 +69,22 @@ object AppModule {
     @Singleton
     fun provideAnalyzeApi(retrofit: Retrofit): AnalyzeApi {
         return retrofit.create(AnalyzeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDatabase(app: Application): CrownCodeDatabase {
+        return Room.databaseBuilder(
+            app,
+            CrownCodeDatabase::class.java,
+            "crowncode.db"
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAnalysisHistoryDao(db: CrownCodeDatabase): AnalysisHistoryDao {
+        return db.analysisHistoryDao()
     }
 
     @Provides
