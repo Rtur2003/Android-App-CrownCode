@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crowncode.domain.model.AnalysisResult
 import com.crowncode.domain.usecase.AnalyzeAudioUseCase
+import com.crowncode.domain.usecase.AnalysisHistoryUseCase
 import com.crowncode.util.AudioRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -34,6 +35,7 @@ sealed interface AiMusicUiState {
 @HiltViewModel
 class AiMusicViewModel @Inject constructor(
     private val analyzeAudioUseCase: AnalyzeAudioUseCase,
+    private val historyUseCase: AnalysisHistoryUseCase,
     private val audioRecorder: AudioRecorder,
     private val application: Application
 ) : ViewModel() {
@@ -81,6 +83,7 @@ class AiMusicViewModel @Inject constructor(
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
+                saveToHistory(result, "file", fileName)
 
             } catch (e: Exception) {
                 _uiState.value = AiMusicUiState.Error(mapErrorMessage(e))
@@ -110,6 +113,7 @@ class AiMusicViewModel @Inject constructor(
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
+                saveToHistory(result, detectSourceLabel(url), url)
 
             } catch (e: Exception) {
                 _uiState.value = AiMusicUiState.Error(mapErrorMessage(e))
@@ -158,6 +162,7 @@ class AiMusicViewModel @Inject constructor(
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
+                saveToHistory(result, "microphone", "Mikrofon Kaydı")
 
                 // Cleanup temp file
                 wavFile.delete()
@@ -182,7 +187,30 @@ class AiMusicViewModel @Inject constructor(
         // which saves whatever was recorded and sends to API
     }
 
+    // ── History ────────────────────────────────
+
+    private fun saveToHistory(result: AnalysisResult, sourceType: String, sourceName: String) {
+        viewModelScope.launch {
+            try {
+                historyUseCase.saveResult(result, sourceType, sourceName)
+            } catch (_: Exception) {
+                // Don't fail the UI if history save fails
+            }
+        }
+    }
+
     // ── Utilities ──────────────────────────────
+
+    private fun detectSourceLabel(url: String): String {
+        val lower = url.lowercase()
+        return when {
+            "tiktok.com" in lower -> "tiktok"
+            "instagram.com" in lower -> "instagram"
+            "soundcloud.com" in lower -> "soundcloud"
+            "twitter.com" in lower || "x.com" in lower -> "twitter"
+            else -> "youtube"
+        }
+    }
 
     private fun isValidMediaUrl(url: String): Boolean {
         val patterns = listOf(
