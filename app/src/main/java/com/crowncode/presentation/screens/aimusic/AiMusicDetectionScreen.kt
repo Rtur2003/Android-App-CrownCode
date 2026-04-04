@@ -1,5 +1,6 @@
 package com.crowncode.presentation.screens.aimusic
 
+import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,8 +50,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -117,6 +120,7 @@ fun AiMusicDetectionScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var urlInput by remember { mutableStateOf("") }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
+    var micPermissionGranted by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -125,6 +129,15 @@ fun AiMusicDetectionScreen(
         uri?.let {
             selectedFileName = it.lastPathSegment ?: "Seçilen dosya"
             viewModel.onFileSelected(it)
+        }
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        micPermissionGranted = granted
+        if (granted) {
+            viewModel.startRecording()
         }
     }
 
@@ -181,6 +194,19 @@ fun AiMusicDetectionScreen(
 
             when (uiState) {
                 is AiMusicUiState.Idle -> {
+                    // Microphone Card (Shazam-like)
+                    MicrophoneCard(
+                        onStartRecording = {
+                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    DividerWithText(text = "veya", useGradient = true)
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
                     // Upload Card
                     UploadCard(
                         onUploadClick = { filePickerLauncher.launch("audio/*") },
@@ -190,12 +216,11 @@ fun AiMusicDetectionScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Divider with text
                     DividerWithText(text = "veya", useGradient = true)
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // URL Input Card
+                    // URL Input Card (YouTube, TikTok, Instagram, SoundCloud)
                     UrlInputCard(
                         urlInput = urlInput,
                         onUrlChange = { urlInput = it },
@@ -208,8 +233,16 @@ fun AiMusicDetectionScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Supported formats info
                     SupportedFormatsCard()
+                }
+
+                is AiMusicUiState.Recording -> {
+                    val recordingState = uiState as AiMusicUiState.Recording
+                    RecordingView(
+                        elapsedSeconds = recordingState.elapsedSeconds,
+                        amplitude = recordingState.amplitude,
+                        onStop = { viewModel.stopRecording() }
+                    )
                 }
 
                 is AiMusicUiState.Processing -> {
@@ -509,7 +542,7 @@ private fun UrlInputCard(
                         color = TextPrimary
                     )
                     Text(
-                        text = "YouTube linki yapıştırın",
+                        text = "YouTube, TikTok, Instagram, SoundCloud",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextMuted
                     )
@@ -524,7 +557,7 @@ private fun UrlInputCard(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        "https://youtube.com/watch?v=...",
+                        "YouTube, TikTok, Instagram veya SoundCloud linki...",
                         color = TextMuted
                     )
                 },
