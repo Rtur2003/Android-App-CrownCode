@@ -62,6 +62,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -187,7 +188,19 @@ fun AiMusicDetectionScreen(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            // History button row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onNavigateToHistory) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "Geçmiş",
+                        tint = TextSecondary
+                    )
+                }
+            }
 
             // Header
             HeaderSection()
