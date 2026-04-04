@@ -17,10 +17,10 @@ class AnalysisRepositoryImpl @Inject constructor(
     private val api: AnalyzeApi
 ) : AnalysisRepository {
 
-    override suspend fun analyzeYoutubeUrl(url: String): AnalysisResult {
-        val sourceType = "youtube".toRequestBody("text/plain".toMediaTypeOrNull())
+    override suspend fun analyzeUrl(url: String, sourceType: String): AnalysisResult {
+        val sourceTypeBody = sourceType.toRequestBody("text/plain".toMediaTypeOrNull())
         val urlBody = url.toRequestBody("text/plain".toMediaTypeOrNull())
-        val response = api.analyzeUrl(sourceType, urlBody)
+        val response = api.analyzeUrl(sourceTypeBody, urlBody)
         return response.toDomain()
     }
 

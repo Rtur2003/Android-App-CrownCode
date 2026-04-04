@@ -4,7 +4,7 @@ import com.crowncode.domain.model.AnalysisResult
 import java.io.InputStream
 
 interface AnalysisRepository {
-    suspend fun analyzeYoutubeUrl(url: String): AnalysisResult
+    suspend fun analyzeUrl(url: String, sourceType: String): AnalysisResult
     suspend fun analyzeFile(
         inputStream: InputStream,
         fileName: String,
