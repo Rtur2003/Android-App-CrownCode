@@ -1,6 +1,9 @@
 package com.crowncode.di
 
 import com.crowncode.BuildConfig
+import com.crowncode.data.remote.api.AnalyzeApi
+import com.crowncode.data.repository.AnalysisRepositoryImpl
+import com.crowncode.domain.repository.AnalysisRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,13 +33,13 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(
                 HttpLoggingInterceptor().apply {
                     level = if (BuildConfig.DEBUG) {
-                        HttpLoggingInterceptor.Level.BODY
+                        HttpLoggingInterceptor.Level.HEADERS
                     } else {
                         HttpLoggingInterceptor.Level.NONE
                     }
@@ -52,9 +55,21 @@ object AppModule {
         json: Json
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL)
+            .baseUrl(BuildConfig.HF_API_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAnalyzeApi(retrofit: Retrofit): AnalyzeApi {
+        return retrofit.create(AnalyzeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAnalysisRepository(api: AnalyzeApi): AnalysisRepository {
+        return AnalysisRepositoryImpl(api)
     }
 }

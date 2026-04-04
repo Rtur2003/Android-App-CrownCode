@@ -1,32 +1,24 @@
 package com.crowncode.presentation.screens.aimusic
 
+import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crowncode.domain.model.AnalysisResult
+import com.crowncode.domain.usecase.AnalyzeAudioUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.random.Random
 
 enum class ProcessingStep(val displayName: String) {
     VALIDATING("Doğrulanıyor"),
-    DOWNLOADING("İndiriliyor"),
+    UPLOADING("Yükleniyor"),
     ANALYZING("Analiz Ediliyor"),
     COMPLETE("Tamamlandı")
 }
-
-data class AnalysisResult(
-    val isAiGenerated: Boolean,
-    val confidence: Float,
-    val processingTime: Float,
-    val sampleRate: Int,
-    val duration: Int,
-    val modelVersion: String = "wav2vec2-v1.0"
-)
 
 sealed interface AiMusicUiState {
     data object Idle : AiMusicUiState
@@ -36,7 +28,10 @@ sealed interface AiMusicUiState {
 }
 
 @HiltViewModel
-class AiMusicViewModel @Inject constructor() : ViewModel() {
+class AiMusicViewModel @Inject constructor(
+    private val analyzeAudioUseCase: AnalyzeAudioUseCase,
+    private val application: Application
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AiMusicUiState>(AiMusicUiState.Idle)
     val uiState: StateFlow<AiMusicUiState> = _uiState.asStateFlow()
@@ -48,11 +43,40 @@ class AiMusicViewModel @Inject constructor() : ViewModel() {
     }
 
     fun analyzeFile() {
-        if (selectedFileUri == null) {
+        val uri = selectedFileUri
+        if (uri == null) {
             _uiState.value = AiMusicUiState.Error("Lütfen bir dosya seçin")
             return
         }
-        runAnalysis()
+
+        viewModelScope.launch {
+            try {
+                _uiState.value = AiMusicUiState.Processing(ProcessingStep.VALIDATING)
+
+                val contentResolver = application.contentResolver
+                val mimeType = contentResolver.getType(uri) ?: "audio/mpeg"
+                val fileName = uri.lastPathSegment ?: "audio_file"
+
+                _uiState.value = AiMusicUiState.Processing(ProcessingStep.UPLOADING)
+
+                val inputStream = contentResolver.openInputStream(uri)
+                    ?: throw Exception("Dosya okunamadı")
+
+                _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING)
+
+                val result = inputStream.use {
+                    analyzeAudioUseCase.analyzeFile(it, fileName, mimeType)
+                }
+
+                _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
+                _uiState.value = AiMusicUiState.Success(result)
+
+            } catch (e: Exception) {
+                _uiState.value = AiMusicUiState.Error(
+                    mapErrorMessage(e)
+                )
+            }
+        }
     }
 
     fun analyzeUrl(url: String) {
@@ -66,48 +90,46 @@ class AiMusicViewModel @Inject constructor() : ViewModel() {
             return
         }
 
-        runAnalysis()
-    }
-
-    private fun runAnalysis() {
         viewModelScope.launch {
             try {
-                // Validating
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.VALIDATING)
-                delay(800)
-
-                // Downloading
-                _uiState.value = AiMusicUiState.Processing(ProcessingStep.DOWNLOADING)
-                delay(1200)
-
-                // Analyzing
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING)
-                delay(1500)
 
-                // Complete
+                val result = analyzeAudioUseCase.analyzeUrl(url)
+
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
-                delay(500)
-
-                // Generate mock result (Demo mode)
-                val result = generateMockResult()
                 _uiState.value = AiMusicUiState.Success(result)
 
             } catch (e: Exception) {
-                _uiState.value = AiMusicUiState.Error(e.message ?: "Bilinmeyen hata oluştu")
+                _uiState.value = AiMusicUiState.Error(
+                    mapErrorMessage(e)
+                )
             }
         }
     }
 
-    private fun generateMockResult(): AnalysisResult {
-        // Demo mode - simulated results
-        val isAi = Random.nextBoolean()
-        return AnalysisResult(
-            isAiGenerated = isAi,
-            confidence = if (isAi) Random.nextFloat() * 0.3f + 0.7f else Random.nextFloat() * 0.3f + 0.7f,
-            processingTime = Random.nextFloat() * 1.5f + 0.8f,
-            sampleRate = listOf(44100, 48000, 96000).random(),
-            duration = Random.nextInt(60, 300)
-        )
+    private fun mapErrorMessage(e: Exception): String {
+        return when {
+            e.message?.contains("rate_limit") == true ->
+                "Çok fazla istek gönderildi. Lütfen bekleyin."
+            e.message?.contains("file_too_large") == true ->
+                "Dosya çok büyük (maks. 30MB)"
+            e.message?.contains("file_too_small") == true ->
+                "Dosya çok küçük"
+            e.message?.contains("invalid_file_type") == true ->
+                "Geçersiz dosya türü. Lütfen ses dosyası yükleyin."
+            e.message?.contains("invalid_youtube_url") == true ->
+                "Geçersiz YouTube URL'si"
+            e.message?.contains("youtube_analysis_failed") == true ->
+                "YouTube analizi başarısız oldu"
+            e.message?.contains("Unable to resolve host") == true ||
+            e.message?.contains("Failed to connect") == true ->
+                "Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin."
+            e.message?.contains("timeout") == true ->
+                "İstek zaman aşımına uğradı. Tekrar deneyin."
+            else ->
+                e.message ?: "Bilinmeyen bir hata oluştu"
+        }
     }
 
     private fun isValidYoutubeUrl(url: String): Boolean {

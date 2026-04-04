@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.crowncode.domain.model.AnalysisResult
 import com.crowncode.presentation.components.DividerWithText
 import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.theme.Accent
@@ -207,8 +208,8 @@ fun AiMusicDetectionScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Info Card
-                    InfoCard()
+                    // Supported formats info
+                    SupportedFormatsCard()
                 }
 
                 is AiMusicUiState.Processing -> {
@@ -302,7 +303,7 @@ private fun HeaderSection() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Accuracy badge
+        // Model info badge
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
@@ -319,7 +320,7 @@ private fun HeaderSection() {
                     .background(Success)
             )
             Text(
-                text = "%97.2 Doğruluk Oranı",
+                text = "4-Tower Ensemble Analiz",
                 style = MaterialTheme.typography.labelMedium,
                 color = Primary,
                 fontWeight = FontWeight.Medium
@@ -561,33 +562,35 @@ private fun UrlInputCard(
 }
 
 @Composable
-private fun InfoCard() {
+private fun SupportedFormatsCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Warning.copy(alpha = 0.08f)),
-        border = BorderStroke(1.dp, Warning.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.06f)),
+        border = BorderStroke(1.dp, Primary.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier.padding(20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = Icons.Default.MusicNote,
                 contentDescription = null,
-                tint = Warning,
+                tint = Primary,
                 modifier = Modifier.size(24.dp)
             )
             Column {
                 Text(
-                    text = "Demo Modu",
+                    text = "Nasıl Çalışır?",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Warning
+                    color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Şu an için simüle edilmiş sonuçlar gösterilmektedir. Gerçek AI modeli entegrasyonu yakında.",
+                    text = "Ses dosyasını yükleyin veya YouTube linki yapıştırın. " +
+                        "4-Tower ensemble sistemi (wav2vec2 + akustik özellikler + CLAP + FST) " +
+                        "ile analiz edilir.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary,
                     lineHeight = 20.sp
@@ -838,6 +841,15 @@ private fun ResultView(
                     color = TextSecondary
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Decision source & model
+                Text(
+                    text = "${result.modelVersion} · ${result.decisionSource}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted
+                )
+
                 Spacer(modifier = Modifier.height(28.dp))
 
                 // Metrics Grid
@@ -846,17 +858,70 @@ private fun ResultView(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     MetricItem(
-                        label = "Süre",
-                        value = "${result.processingTime.toString().take(3)}s"
+                        label = "İşlem Süresi",
+                        value = "${String.format("%.1f", result.processingTime)}s"
                     )
                     MetricItem(
                         label = "Sample Rate",
-                        value = "${result.sampleRate / 1000}kHz"
+                        value = "${result.audioInfo.sampleRate / 1000}kHz"
                     )
                     MetricItem(
                         label = "Uzunluk",
-                        value = "${result.duration}s"
+                        value = "${result.audioInfo.duration.toInt()}s"
                     )
+                }
+            }
+        }
+
+        // Feature Details Card
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Surface),
+            border = BorderStroke(1.dp, Border)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Text(
+                    text = "Analiz Detayları",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                FeatureBar("Spektral Düzenlilik", result.features.spectralRegularity)
+                Spacer(modifier = Modifier.height(8.dp))
+                FeatureBar("Zamansal Örüntüler", result.features.temporalPatterns)
+                Spacer(modifier = Modifier.height(8.dp))
+                FeatureBar("Harmonik Yapı", result.features.harmonicStructure)
+
+                if (result.features.indicators.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Göstergeler: ${result.features.indicators.joinToString(", ")}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted
+                    )
+                }
+
+                // Vocal analysis if available
+                result.vocalAnalysis?.let { vocal ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Vokal Analizi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FeatureBar("Vokal AI Skoru", vocal.vocalAiScore)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FeatureBar("Pitch Kararlılığı", vocal.pitchStabilityScore)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FeatureBar("Vibrato Düzenliliği", vocal.vibratoRegularityScore)
                 }
             }
         }
@@ -869,6 +934,48 @@ private fun ResultView(
             onClick = onAnalyzeAnother,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun FeatureBar(label: String, value: Float) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary
+            )
+            Text(
+                text = "${(value * 100).toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(SurfaceAlt)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction = value.coerceIn(0f, 1f))
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(GradientStart, GradientEnd)
+                        )
+                    )
+            )
+        }
     }
 }
 
