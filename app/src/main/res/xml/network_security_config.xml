@@ -6,7 +6,7 @@
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">hasanarthuraltuntas.xyz</domain>
+        <domain includeSubdomains="true">hasan-arthur-altuntas.xyz</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

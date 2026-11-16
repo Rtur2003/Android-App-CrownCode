@@ -34,12 +34,20 @@ class AudioRecorder @Inject constructor() {
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
 
+    @Volatile
+    private var stopRequested = false
+
+    fun requestStop() {
+        stopRequested = true
+    }
+
     /**
      * Records audio from microphone and saves as WAV file.
-     * Runs on IO dispatcher. Cancellation-safe via coroutine isActive check.
-     * Returns the WAV file path.
+     * Runs on IO dispatcher. Cancellation-safe via coroutine isActive check
+     * and gracefully completes on [requestStop] so captured audio can be uploaded.
      */
     suspend fun record(context: Context): File = withContext(Dispatchers.IO) {
+        stopRequested = false
         val bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
             .coerceAtLeast(4096)
 
@@ -64,7 +72,7 @@ class AudioRecorder @Inject constructor() {
             recorder.startRecording()
             _elapsedSeconds.value = 0
 
-            while (isActive && totalSamples < maxSamples) {
+            while (isActive && !stopRequested && totalSamples < maxSamples) {
                 val read = recorder.read(buffer, 0, buffer.size)
                 if (read > 0) {
                     // Write PCM data

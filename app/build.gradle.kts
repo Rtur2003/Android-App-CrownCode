@@ -21,7 +21,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Production API URL
-        buildConfigField("String", "API_BASE_URL", "\"https://hasanarthuraltuntas.xyz/api/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://hasan-arthur-altuntas.xyz/api/\"")
         // HuggingFace Backend URL - update with your space name
         buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
     }
@@ -41,7 +41,7 @@ android {
                 "proguard-rules.pro"
             )
             // Production URL
-            buildConfigField("String", "API_BASE_URL", "\"https://hasanarthuraltuntas.xyz/api/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://hasan-arthur-altuntas.xyz/api/\"")
             buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
         }
     }
