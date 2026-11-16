@@ -31,12 +31,13 @@ fun CrownCodeNavHost() {
             exitTransition = { fadeOut(tween(300)) }
         ) {
             WelcomeScreen(
-                onGetStarted = { navController.navigate(Route.SignUp) },
-                onSignIn = { navController.navigate(Route.Login) },
-                onContinueAsGuest = {
+                onStartAnalysis = {
                     navController.navigate(Route.AiMusicDetection) {
                         popUpTo(Route.Welcome) { inclusive = true }
                     }
+                },
+                onOpenHistory = {
+                    navController.navigate(Route.History)
                 }
             )
         }

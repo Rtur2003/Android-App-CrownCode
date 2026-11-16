@@ -215,7 +215,7 @@ private fun HistoryCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "%${(entry.confidence * 100).toInt()}",
+                        text = "%${(entry.confidence * 100).toInt()} AI",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
