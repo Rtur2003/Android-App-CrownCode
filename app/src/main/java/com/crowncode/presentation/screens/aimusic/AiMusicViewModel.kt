@@ -286,6 +286,8 @@ class AiMusicViewModel @Inject constructor(
     fun reset() {
         recordingJob?.cancel()
         recordingJob = null
+        analysisJob?.cancel()
+        analysisJob = null
         _uiState.value = AiMusicUiState.Idle
         selectedFileUri = null
     }

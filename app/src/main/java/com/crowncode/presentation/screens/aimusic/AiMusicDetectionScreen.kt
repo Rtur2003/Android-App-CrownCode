@@ -130,7 +130,7 @@ fun AiMusicDetectionScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            selectedFileName = it.lastPathSegment ?: "Seçilen dosya"
+            selectedFileName = viewModel.resolveFileName(it)
             viewModel.onFileSelected(it)
         }
     }
@@ -261,8 +261,10 @@ fun AiMusicDetectionScreen(
                 }
 
                 is AiMusicUiState.Processing -> {
+                    val proc = uiState as AiMusicUiState.Processing
                     ProcessingView(
-                        currentStep = (uiState as AiMusicUiState.Processing).currentStep
+                        currentStep = proc.currentStep,
+                        statusDetail = proc.statusDetail
                     )
                 }
 
@@ -649,7 +651,10 @@ private fun SupportedFormatsCard() {
 }
 
 @Composable
-private fun ProcessingView(currentStep: ProcessingStep) {
+private fun ProcessingView(
+    currentStep: ProcessingStep,
+    statusDetail: String? = null
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "processing")
 
     val rotation by infiniteTransition.animateFloat(
@@ -744,9 +749,10 @@ private fun ProcessingView(currentStep: ProcessingStep) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Yapay zeka modeli çalışıyor...",
+            text = statusDetail ?: "Yapay zeka modeli çalışıyor...",
             style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
+            color = TextSecondary,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(40.dp))
@@ -882,12 +888,30 @@ private fun ResultView(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Confidence
+                // AI Probability + Confidence Band
                 Text(
-                    text = "Güven Oranı: %${(result.confidence * 100).toInt()}",
+                    text = "AI Olasılığı: %${(result.confidence * 100).toInt()}",
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextSecondary
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
                 )
+
+                result.xai?.confidenceBand?.labelTr?.takeIf { it.isNotBlank() }?.let { bandLabel ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(resultColor.copy(alpha = 0.14f))
+                            .border(1.dp, resultColor.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = "Kesinlik Bandı: $bandLabel",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = resultColor
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -970,6 +994,102 @@ private fun ResultView(
                     FeatureBar("Pitch Kararlılığı", vocal.pitchStabilityScore)
                     Spacer(modifier = Modifier.height(4.dp))
                     FeatureBar("Vibrato Düzenliliği", vocal.vibratoRegularityScore)
+                }
+            }
+        }
+
+        // XAI & Meta-classifier details
+        if (result.xai != null || result.metaClassifier != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Surface),
+                border = BorderStroke(1.dp, Border)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "XAI Açıklanabilirlik ve Model Oyları",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+
+                    result.xai?.let { xai ->
+                        val activeVotes = xai.modelVotes.filter { it.available }
+                        if (activeVotes.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            activeVotes.forEach { vote ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = vote.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary
+                                    )
+                                    val voteTone = if (vote.vote == "ai") Warning else Success
+                                    Text(
+                                        text = "${if (vote.vote == "ai") "AI" else "İnsan"} · %${(vote.probability * 100).toInt()}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = voteTone
+                                    )
+                                }
+                            }
+                        }
+
+                        if (xai.topContributions.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "En Etkili Akustik Öznitelikler (${xai.featureCount} özellik)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = TextMuted
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            xai.topContributions.take(4).forEach { contrib ->
+                                val tone = if (contrib.direction == "towards_ai") Warning else Success
+                                val signed = if (contrib.shapValue >= 0f) {
+                                    "+${String.format("%.2f", contrib.shapValue)}"
+                                } else {
+                                    String.format("%.2f", contrib.shapValue)
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = contrib.label.ifBlank { contrib.name },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = signed,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = tone
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    result.metaClassifier?.let { meta ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        val metaTone = if (meta.isAiGenerated) Warning else Success
+                        Text(
+                            text = "İkinci Görüş (Meta): ${if (meta.isAiGenerated) "AI" else "İnsan"} · %${(meta.confidence * 100).toInt()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = metaTone
+                        )
+                    }
                 }
             }
         }
