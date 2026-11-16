@@ -61,9 +61,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun WelcomeScreen(
-    onGetStarted: () -> Unit,
-    onSignIn: () -> Unit,
-    onContinueAsGuest: () -> Unit
+    onStartAnalysis: () -> Unit,
+    onOpenHistory: () -> Unit
 ) {
     var isContentVisible by remember { mutableStateOf(false) }
 
@@ -162,7 +161,7 @@ fun WelcomeScreen(
                         .background(Success)
                 )
                 Text(
-                    text = "%97.2 Doğruluk Oranı",
+                    text = "%88.4 Doğruluk · 0.955 AUC",
                     style = MaterialTheme.typography.labelMedium,
                     color = Primary,
                     fontWeight = FontWeight.Medium
@@ -201,27 +200,16 @@ fun WelcomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GradientButton(
-                    text = "Başla",
-                    onClick = onGetStarted,
+                    text = "Analize Başla",
+                    onClick = onStartAnalysis,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedActionButton(
-                    text = "Giriş Yap",
-                    onClick = onSignIn,
+                    text = "Analiz Geçmişi",
+                    onClick = onOpenHistory,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                TextButton(
-                    onClick = onContinueAsGuest,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Misafir olarak devam et",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

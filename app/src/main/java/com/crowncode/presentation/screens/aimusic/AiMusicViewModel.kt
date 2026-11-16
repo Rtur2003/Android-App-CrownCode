@@ -7,8 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.crowncode.domain.model.AnalysisResult
 import com.crowncode.domain.usecase.AnalyzeAudioUseCase
 import com.crowncode.domain.usecase.AnalysisHistoryUseCase
+import com.crowncode.util.AudioFileResolver
 import com.crowncode.util.AudioRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +28,10 @@ enum class ProcessingStep(val displayName: String) {
 
 sealed interface AiMusicUiState {
     data object Idle : AiMusicUiState
-    data class Processing(val currentStep: ProcessingStep) : AiMusicUiState
+    data class Processing(
+        val currentStep: ProcessingStep,
+        val statusDetail: String? = null
+    ) : AiMusicUiState
     data class Recording(val elapsedSeconds: Int, val amplitude: Float) : AiMusicUiState
     data class Success(val result: AnalysisResult) : AiMusicUiState
     data class Error(val message: String) : AiMusicUiState
@@ -45,12 +50,17 @@ class AiMusicViewModel @Inject constructor(
 
     private var selectedFileUri: Uri? = null
     private var recordingJob: Job? = null
+    private var analysisJob: Job? = null
 
     val recorderAmplitude: StateFlow<Float> = audioRecorder.amplitude
     val recorderElapsed: StateFlow<Int> = audioRecorder.elapsedSeconds
 
     fun onFileSelected(uri: Uri) {
         selectedFileUri = uri
+    }
+
+    fun resolveFileName(uri: Uri): String {
+        return AudioFileResolver.resolveDisplayName(application.contentResolver, uri)
     }
 
     // ── File Analysis ──────────────────────────
@@ -62,29 +72,40 @@ class AiMusicViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        analysisJob?.cancel()
+        analysisJob = viewModelScope.launch {
             try {
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.VALIDATING)
 
                 val contentResolver = application.contentResolver
                 val mimeType = contentResolver.getType(uri) ?: "audio/mpeg"
-                val fileName = uri.lastPathSegment ?: "audio_file"
+                val fileName = AudioFileResolver.resolveDisplayName(contentResolver, uri)
 
-                _uiState.value = AiMusicUiState.Processing(ProcessingStep.UPLOADING)
+                _uiState.value = AiMusicUiState.Processing(
+                    ProcessingStep.UPLOADING,
+                    "$fileName yükleniyor..."
+                )
 
                 val inputStream = contentResolver.openInputStream(uri)
                     ?: throw Exception("Dosya okunamadı")
 
-                _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING)
+                _uiState.value = AiMusicUiState.Processing(
+                    ProcessingStep.ANALYZING,
+                    "AURIS iş kuyruğuna alınıyor..."
+                )
 
                 val result = inputStream.use {
-                    analyzeAudioUseCase.analyzeFile(it, fileName, mimeType)
+                    analyzeAudioUseCase.analyzeFile(it, fileName, mimeType) { status ->
+                        _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING, status)
+                    }
                 }
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
                 saveToHistory(result, "file", fileName)
 
+            } catch (ce: CancellationException) {
+                throw ce
             } catch (e: Exception) {
                 _uiState.value = AiMusicUiState.Error(mapErrorMessage(e))
             }
@@ -104,17 +125,25 @@ class AiMusicViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        analysisJob?.cancel()
+        analysisJob = viewModelScope.launch {
             try {
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.VALIDATING)
-                _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING)
+                _uiState.value = AiMusicUiState.Processing(
+                    ProcessingStep.ANALYZING,
+                    "Bağlantı AURIS iş kuyruğuna alınıyor..."
+                )
 
-                val result = analyzeAudioUseCase.analyzeUrl(url)
+                val result = analyzeAudioUseCase.analyzeUrl(url) { status ->
+                    _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING, status)
+                }
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
                 saveToHistory(result, detectSourceLabel(url), url)
 
+            } catch (ce: CancellationException) {
+                throw ce
             } catch (e: Exception) {
                 _uiState.value = AiMusicUiState.Error(mapErrorMessage(e))
             }
@@ -129,7 +158,6 @@ class AiMusicViewModel @Inject constructor(
         recordingJob = viewModelScope.launch {
             _uiState.value = AiMusicUiState.Recording(0, 0f)
 
-            // Collect amplitude/elapsed updates for UI
             val amplitudeJob = launch {
                 audioRecorder.amplitude.collect { amp ->
                     val state = _uiState.value
@@ -153,38 +181,39 @@ class AiMusicViewModel @Inject constructor(
                 amplitudeJob.cancel()
                 elapsedJob.cancel()
 
-                // Recording done, now analyze
-                _uiState.value = AiMusicUiState.Processing(ProcessingStep.UPLOADING)
+                _uiState.value = AiMusicUiState.Processing(
+                    ProcessingStep.UPLOADING,
+                    "Mikrofon kaydı yükleniyor..."
+                )
 
-                val result = FileInputStream(wavFile).use { fis ->
-                    analyzeAudioUseCase.analyzeFile(fis, wavFile.name, "audio/wav")
+                val result = try {
+                    FileInputStream(wavFile).use { fis ->
+                        analyzeAudioUseCase.analyzeFile(fis, wavFile.name, "audio/wav") { status ->
+                            _uiState.value = AiMusicUiState.Processing(ProcessingStep.ANALYZING, status)
+                        }
+                    }
+                } finally {
+                    wavFile.delete()
                 }
 
                 _uiState.value = AiMusicUiState.Processing(ProcessingStep.COMPLETE)
                 _uiState.value = AiMusicUiState.Success(result)
                 saveToHistory(result, "microphone", "Mikrofon Kaydı")
 
-                // Cleanup temp file
-                wavFile.delete()
-
+            } catch (e: CancellationException) {
+                amplitudeJob.cancel()
+                elapsedJob.cancel()
+                throw e
             } catch (e: Exception) {
                 amplitudeJob.cancel()
                 elapsedJob.cancel()
-
-                if (e is kotlinx.coroutines.CancellationException) {
-                    // User stopped recording early — don't show error
-                    return@launch
-                }
                 _uiState.value = AiMusicUiState.Error(mapErrorMessage(e))
             }
         }
     }
 
     fun stopRecording() {
-        recordingJob?.cancel()
-        recordingJob = null
-        // Recording cancel triggers the coroutine to finish,
-        // which saves whatever was recorded and sends to API
+        audioRecorder.requestStop()
     }
 
     // ── History ────────────────────────────────
