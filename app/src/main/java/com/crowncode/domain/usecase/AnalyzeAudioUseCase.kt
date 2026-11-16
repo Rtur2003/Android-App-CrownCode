@@ -8,17 +8,18 @@ import javax.inject.Inject
 class AnalyzeAudioUseCase @Inject constructor(
     private val repository: AnalysisRepository
 ) {
-    suspend fun analyzeUrl(url: String): AnalysisResult {
+    suspend fun analyzeUrl(url: String, onStatus: (String) -> Unit = {}): AnalysisResult {
         val sourceType = detectSourceType(url)
-        return repository.analyzeUrl(url, sourceType)
+        return repository.analyzeUrl(url, sourceType, onStatus)
     }
 
     suspend fun analyzeFile(
         inputStream: InputStream,
         fileName: String,
-        mimeType: String
+        mimeType: String,
+        onStatus: (String) -> Unit = {}
     ): AnalysisResult {
-        return repository.analyzeFile(inputStream, fileName, mimeType)
+        return repository.analyzeFile(inputStream, fileName, mimeType, onStatus)
     }
 
     private fun detectSourceType(url: String): String {
