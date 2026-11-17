@@ -1,7 +1,10 @@
 package com.crowncode.presentation.screens.history
 
+import android.content.Intent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -22,27 +26,37 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,9 +65,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crowncode.data.local.entity.AnalysisHistoryEntity
 import com.crowncode.presentation.theme.Background
 import com.crowncode.presentation.theme.Border
+import com.crowncode.presentation.theme.GradientEnd
+import com.crowncode.presentation.theme.GradientStart
 import com.crowncode.presentation.theme.Primary
 import com.crowncode.presentation.theme.Success
 import com.crowncode.presentation.theme.Surface
+import com.crowncode.presentation.theme.SurfaceAlt
 import com.crowncode.presentation.theme.TextMuted
 import com.crowncode.presentation.theme.TextPrimary
 import com.crowncode.presentation.theme.TextSecondary
@@ -62,12 +79,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val history by viewModel.history.collectAsStateWithLifecycle()
+    var selectedEntry by remember { mutableStateOf<AnalysisHistoryEntity?>(null) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -75,7 +95,6 @@ fun HistoryScreen(
             .background(Background)
             .padding(WindowInsets.statusBars.asPaddingValues())
     ) {
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,7 +103,7 @@ fun HistoryScreen(
         ) {
             IconButton(onClick = onNavigateBack) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Geri",
                     tint = TextPrimary
                 )
@@ -111,7 +130,6 @@ fun HistoryScreen(
         }
 
         if (history.isEmpty()) {
-            // Empty state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -147,10 +165,40 @@ fun HistoryScreen(
                 items(history, key = { it.id }) { entry ->
                     HistoryCard(
                         entry = entry,
+                        onOpen = { selectedEntry = entry },
                         onDelete = { viewModel.deleteEntry(entry.id) }
                     )
                 }
             }
+        }
+    }
+
+    selectedEntry?.let { entry ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { selectedEntry = null },
+            sheetState = sheetState,
+            containerColor = Surface,
+            contentColor = TextPrimary
+        ) {
+            HistoryDetailSheet(
+                entry = entry,
+                onShare = {
+                    val verdict = if (entry.isAiGenerated) "AI Tarafından Oluşturulmuş" else "İnsan Tarafından Yapılmış"
+                    val shareText = buildString {
+                        append("AURIS Analiz Sonucu: $verdict\n")
+                        append("AI Olasılığı: %${(entry.confidence * 100).toInt()}\n")
+                        append("Kaynak: ${entry.sourceName}\n")
+                        append("Model: ${entry.modelVersion} (${entry.decisionSource})\n")
+                        append("https://hasan-arthur-altuntas.xyz/ai-music-detection")
+                    }
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, "Sonucu Paylaş"))
+                }
+            )
         }
     }
 }
@@ -158,17 +206,20 @@ fun HistoryScreen(
 @Composable
 private fun HistoryCard(
     entry: AnalysisHistoryEntity,
+    onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
     val resultColor = if (entry.isAiGenerated) Warning else Success
-    val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale("tr"))
+    val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale("tr", "TR"))
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface)
+            .animateContentSize()
+            .clickable(onClick = onOpen),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, Border)
     ) {
         Row(
             modifier = Modifier
@@ -176,7 +227,6 @@ private fun HistoryCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Source type icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -248,6 +298,101 @@ private fun HistoryCard(
                     modifier = Modifier.size(20.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryDetailSheet(
+    entry: AnalysisHistoryEntity,
+    onShare: () -> Unit
+) {
+    val resultColor = if (entry.isAiGenerated) Warning else Success
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = if (entry.isAiGenerated) "AI Tarafından Oluşturulmuş" else "İnsan Tarafından Yapılmış",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = resultColor
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${entry.sourceName} · %${(entry.confidence * 100).toInt()} AI Olasılığı",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "${entry.modelVersion} · ${entry.decisionSource} · ${entry.sampleRate / 1000}kHz · ${entry.duration.toInt()}s",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+        HistoryMetricBar("Spektral Düzenlilik", entry.spectralRegularity)
+        Spacer(modifier = Modifier.height(8.dp))
+        HistoryMetricBar("Zamansal Örüntüler", entry.temporalPatterns)
+        Spacer(modifier = Modifier.height(8.dp))
+        HistoryMetricBar("Harmonik Yapı", entry.harmonicStructure)
+        if (entry.hasVocals) {
+            Spacer(modifier = Modifier.height(8.dp))
+            HistoryMetricBar("Vokal AI Skoru", entry.vocalAiScore)
+        }
+
+        val indicatorList = entry.indicators.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (indicatorList.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "Göstergeler: ${indicatorList.joinToString(" · ")}",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        OutlinedButton(
+            onClick = onShare,
+            border = BorderStroke(1.dp, Primary.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Sonucu Paylaş", color = Primary)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun HistoryMetricBar(label: String, value: Float) {
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = TextPrimary, fontWeight = FontWeight.Medium)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(SurfaceAlt)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction = value.coerceIn(0f, 1f))
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd)))
+            )
         }
     }
 }
