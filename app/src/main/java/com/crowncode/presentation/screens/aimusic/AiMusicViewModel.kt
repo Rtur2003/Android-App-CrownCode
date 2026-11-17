@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crowncode.domain.model.AnalysisResult
+import com.crowncode.domain.model.ServerHealthState
 import com.crowncode.domain.usecase.AnalyzeAudioUseCase
 import com.crowncode.domain.usecase.AnalysisHistoryUseCase
 import com.crowncode.util.AudioFileResolver
@@ -48,12 +49,26 @@ class AiMusicViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<AiMusicUiState>(AiMusicUiState.Idle)
     val uiState: StateFlow<AiMusicUiState> = _uiState.asStateFlow()
 
+    private val _serverHealth = MutableStateFlow<ServerHealthState>(ServerHealthState.Checking)
+    val serverHealth: StateFlow<ServerHealthState> = _serverHealth.asStateFlow()
+
     private var selectedFileUri: Uri? = null
     private var recordingJob: Job? = null
     private var analysisJob: Job? = null
 
     val recorderAmplitude: StateFlow<Float> = audioRecorder.amplitude
     val recorderElapsed: StateFlow<Int> = audioRecorder.elapsedSeconds
+
+    init {
+        refreshServerStatus()
+    }
+
+    fun refreshServerStatus() {
+        viewModelScope.launch {
+            _serverHealth.value = ServerHealthState.Checking
+            _serverHealth.value = analyzeAudioUseCase.checkServerHealth()
+        }
+    }
 
     fun onFileSelected(uri: Uri) {
         selectedFileUri = uri
