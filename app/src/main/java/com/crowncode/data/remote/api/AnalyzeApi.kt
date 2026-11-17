@@ -2,6 +2,7 @@ package com.crowncode.data.remote.api
 
 import com.crowncode.data.remote.dto.AnalysisJobDto
 import com.crowncode.data.remote.dto.AnalyzeResponseDto
+import com.crowncode.data.remote.dto.HealthResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.DELETE
@@ -12,6 +13,9 @@ import retrofit2.http.Part
 import retrofit2.http.Path
 
 interface AnalyzeApi {
+
+    @GET("api/health")
+    suspend fun getHealth(): HealthResponseDto
 
     @Multipart
     @POST("api/analyze")
