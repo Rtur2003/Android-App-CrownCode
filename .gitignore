@@ -21,8 +21,9 @@ gen/
 out/
 release/
 
-# Gradle files
+# Gradle & Kotlin compiler state
 .gradle/
+.kotlin/
 build/
 
 # Local configuration file (sdk path, etc)
