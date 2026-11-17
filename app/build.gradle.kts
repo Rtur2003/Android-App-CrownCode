@@ -22,16 +22,16 @@ android {
 
         // Production API URL
         buildConfigField("String", "API_BASE_URL", "\"https://hasan-arthur-altuntas.xyz/api/\"")
-        // HuggingFace Backend URL - update with your space name
-        buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
+        // Live HuggingFace Backend Space (shared with CrownCode web platform)
+        buildConfigField("String", "HF_API_BASE_URL", "\"https://rthur2003-crowncode-backend.hf.space/\"")
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
-            // Use HuggingFace backend for development
-            buildConfigField("String", "API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
-            buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
+            // Use unified HuggingFace backend in both debug and release
+            buildConfigField("String", "API_BASE_URL", "\"https://rthur2003-crowncode-backend.hf.space/\"")
+            buildConfigField("String", "HF_API_BASE_URL", "\"https://rthur2003-crowncode-backend.hf.space/\"")
         }
         release {
             isMinifyEnabled = true
@@ -42,7 +42,7 @@ android {
             )
             // Production URL
             buildConfigField("String", "API_BASE_URL", "\"https://hasan-arthur-altuntas.xyz/api/\"")
-            buildConfigField("String", "HF_API_BASE_URL", "\"https://rtur2003-crowncode-backend.hf.space/\"")
+            buildConfigField("String", "HF_API_BASE_URL", "\"https://rthur2003-crowncode-backend.hf.space/\"")
         }
     }
 
