@@ -5,30 +5,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val CrownCodeColorScheme = darkColorScheme(
-    // Primary
     primary = Primary,
     onPrimary = TextOnPrimary,
     primaryContainer = Secondary,
     onPrimaryContainer = TextPrimary,
-
-    // Secondary
     secondary = Secondary,
     onSecondary = TextPrimary,
     secondaryContainer = SurfaceAlt,
     onSecondaryContainer = TextPrimary,
-
-    // Tertiary
     tertiary = Accent,
     onTertiary = TextOnPrimary,
     tertiaryContainer = SurfaceElevated,
     onTertiaryContainer = TextPrimary,
-
-    // Background & Surface
     background = Background,
     onBackground = TextPrimary,
     surface = Surface,
@@ -36,12 +28,8 @@ private val CrownCodeColorScheme = darkColorScheme(
     surfaceVariant = SurfaceAlt,
     onSurfaceVariant = TextSecondary,
     surfaceContainerHighest = SurfaceElevated,
-
-    // Outline
     outline = Border,
     outlineVariant = BorderLight,
-
-    // Status
     error = Error,
     onError = TextPrimary,
     errorContainer = Error.copy(alpha = 0.2f),
@@ -52,14 +40,10 @@ private val CrownCodeColorScheme = darkColorScheme(
 fun CrownCodeTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = CrownCodeColorScheme
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = Background.toArgb()
-            window.navigationBarColor = Background.toArgb()
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = false
@@ -68,7 +52,7 @@ fun CrownCodeTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = CrownCodeColorScheme,
         typography = Typography,
         content = content
     )
