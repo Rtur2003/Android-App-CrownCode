@@ -1,6 +1,7 @@
 package com.crowncode
 
 import com.crowncode.data.remote.dto.AnalysisJobDto
+import com.crowncode.data.remote.dto.HealthResponseDto
 import com.crowncode.util.AudioFileResolver
 import com.crowncode.util.ValidationUtils
 import kotlinx.serialization.json.Json
@@ -97,6 +98,28 @@ class AnalyzeContractTest {
         assertEquals(2, res.xai?.modelVotes?.size)
         assertEquals(47, res.xai?.featureCount)
         assertEquals("trained-lgbm-v1", res.metaClassifier?.modelVersion)
+    }
+
+    @Test
+    fun `deserializes live health payload matching HF space schema`() {
+        val raw = """
+            {
+              "status": "ok",
+              "models": {
+                "xai": {"available": true, "bestModel": "LightGBM", "ensembleLoaded": 11},
+                "wav2vec2": {"loaded": true, "initialized": true},
+                "clap": {"initialized": true},
+                "meta": {"trained": true},
+                "warm": {"done": true}
+              }
+            }
+        """.trimIndent()
+
+        val health = json.decodeFromString<HealthResponseDto>(raw)
+        assertEquals("ok", health.status)
+        assertEquals(11, health.models?.xai?.ensembleLoaded)
+        assertEquals("LightGBM", health.models?.xai?.bestModel)
+        assertTrue(health.models?.warm?.done == true)
     }
 
     @Test
