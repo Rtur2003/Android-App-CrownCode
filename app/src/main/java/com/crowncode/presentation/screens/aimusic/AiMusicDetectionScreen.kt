@@ -1,9 +1,12 @@
 package com.crowncode.presentation.screens.aimusic
 
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
+import java.util.Locale
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -16,16 +19,16 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -48,12 +51,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -64,9 +70,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,21 +87,29 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crowncode.domain.model.AnalysisResult
-import com.crowncode.presentation.components.DividerWithText
+import com.crowncode.domain.model.AnalysisTimeline
+import com.crowncode.domain.model.ServerHealthState
 import com.crowncode.presentation.components.GradientButton
 import com.crowncode.presentation.theme.Accent
 import com.crowncode.presentation.theme.Background
@@ -104,7 +120,6 @@ import com.crowncode.presentation.theme.GradientEnd
 import com.crowncode.presentation.theme.GradientMiddle
 import com.crowncode.presentation.theme.GradientStart
 import com.crowncode.presentation.theme.Primary
-import com.crowncode.presentation.theme.Secondary
 import com.crowncode.presentation.theme.Success
 import com.crowncode.presentation.theme.Surface
 import com.crowncode.presentation.theme.SurfaceAlt
@@ -114,6 +129,14 @@ import com.crowncode.presentation.theme.TextOnPrimary
 import com.crowncode.presentation.theme.TextPrimary
 import com.crowncode.presentation.theme.TextSecondary
 import com.crowncode.presentation.theme.Warning
+import kotlin.math.cos
+import kotlin.math.sin
+
+private enum class InputMode(val label: String, val icon: ImageVector) {
+    MIC("Dinle", Icons.Default.Mic),
+    FILE("Dosya", Icons.Default.CloudUpload),
+    URL("Link", Icons.Default.Link)
+}
 
 @Composable
 fun AiMusicDetectionScreen(
@@ -121,10 +144,12 @@ fun AiMusicDetectionScreen(
     viewModel: AiMusicViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val serverHealth by viewModel.serverHealth.collectAsStateWithLifecycle()
+    var inputMode by remember { mutableStateOf(InputMode.MIC) }
     var urlInput by remember { mutableStateOf("") }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
-    var micPermissionGranted by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val clipboard = LocalClipboardManager.current
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -138,7 +163,6 @@ fun AiMusicDetectionScreen(
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        micPermissionGranted = granted
         if (granted) {
             viewModel.startRecording()
         }
@@ -149,14 +173,14 @@ fun AiMusicDetectionScreen(
             .fillMaxSize()
             .background(Background)
     ) {
-        // Background gradient overlay
+        // Obsidian atmospheric background glow
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Surface.copy(alpha = 0.8f),
+                            Surface.copy(alpha = 0.88f),
                             Background,
                             Background
                         )
@@ -164,16 +188,15 @@ fun AiMusicDetectionScreen(
                 )
         )
 
-        // Decorative glow effect
         Box(
             modifier = Modifier
-                .size(300.dp)
-                .offset(x = (-50).dp, y = (-100).dp)
-                .blur(100.dp)
+                .size(320.dp)
+                .offset(x = (-60).dp, y = (-110).dp)
+                .blur(110.dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Primary.copy(alpha = 0.15f),
+                            Primary.copy(alpha = 0.16f),
                             Color.Transparent
                         )
                     )
@@ -186,13 +209,21 @@ fun AiMusicDetectionScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(WindowInsets.statusBars.asPaddingValues())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 36.dp)
         ) {
-            // History button row
+            // Top bar: Live Backend Status Pill + History shortcut
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                ServerStatusPill(
+                    state = serverHealth,
+                    onClick = { viewModel.refreshServerStatus() }
+                )
+
                 IconButton(onClick = onNavigateToHistory) {
                     Icon(
                         imageVector = Icons.Default.History,
@@ -202,53 +233,90 @@ fun AiMusicDetectionScreen(
                 }
             }
 
-            // Header
+            Spacer(modifier = Modifier.height(8.dp))
+
             HeaderSection()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             when (uiState) {
                 is AiMusicUiState.Idle -> {
-                    // Microphone Card (Shazam-like)
-                    MicrophoneCard(
-                        onStartRecording = {
-                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    // Clean Mode Capsule Switcher (1 single compact studio console)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(SurfaceAlt)
+                            .border(1.dp, Border, RoundedCornerShape(999.dp))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        InputMode.entries.forEach { mode ->
+                            val selected = mode == inputMode
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(
+                                        if (selected) Brush.horizontalGradient(listOf(GradientStart, GradientEnd))
+                                        else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                                    )
+                                    .clickable { inputMode = mode }
+                                    .padding(vertical = 11.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = mode.icon,
+                                    contentDescription = null,
+                                    tint = if (selected) TextOnPrimary else TextMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = mode.label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = if (selected) TextOnPrimary else TextSecondary
+                                )
+                            }
                         }
-                    )
+                    }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                    DividerWithText(text = "veya", useGradient = true)
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Upload Card
-                    UploadCard(
-                        onUploadClick = { filePickerLauncher.launch("audio/*") },
-                        selectedFileName = selectedFileName,
-                        onAnalyzeFile = { viewModel.analyzeFile() }
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    DividerWithText(text = "veya", useGradient = true)
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // URL Input Card (YouTube, TikTok, Instagram, SoundCloud)
-                    UrlInputCard(
-                        urlInput = urlInput,
-                        onUrlChange = { urlInput = it },
-                        onAnalyzeUrl = {
-                            keyboardController?.hide()
-                            viewModel.analyzeUrl(urlInput)
-                        },
-                        isEnabled = urlInput.isNotBlank()
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    SupportedFormatsCard()
+                    AnimatedContent(
+                        targetState = inputMode,
+                        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(180)) },
+                        label = "input_mode_transition"
+                    ) { mode ->
+                        when (mode) {
+                            InputMode.MIC -> OrbitalMicStage(
+                                onStartRecording = {
+                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            )
+                            InputMode.FILE -> UploadCard(
+                                onUploadClick = { filePickerLauncher.launch("audio/*") },
+                                selectedFileName = selectedFileName,
+                                onAnalyzeFile = { viewModel.analyzeFile() }
+                            )
+                            InputMode.URL -> UrlInputCard(
+                                urlInput = urlInput,
+                                onUrlChange = { urlInput = it },
+                                onPasteClipboard = {
+                                    clipboard.getText()?.text?.trim()?.takeIf { it.isNotEmpty() }?.let { pasted ->
+                                        urlInput = pasted
+                                    }
+                                },
+                                onAnalyzeUrl = {
+                                    keyboardController?.hide()
+                                    viewModel.analyzeUrl(urlInput)
+                                },
+                                isEnabled = urlInput.isNotBlank()
+                            )
+                        }
+                    }
                 }
 
                 is AiMusicUiState.Recording -> {
@@ -295,13 +363,57 @@ fun AiMusicDetectionScreen(
 }
 
 @Composable
+private fun ServerStatusPill(
+    state: ServerHealthState,
+    onClick: () -> Unit
+) {
+    val dotColor = when (state) {
+        is ServerHealthState.Online -> Success
+        is ServerHealthState.Waking, ServerHealthState.Checking -> Warning
+        is ServerHealthState.Offline -> Error
+    }
+    val label = when (state) {
+        is ServerHealthState.Checking -> "AURIS bağlanıyor..."
+        is ServerHealthState.Online ->
+            if (state.ensembleCount > 0) "AURIS Çevrimiçi · ${state.ensembleCount} XAI" else "AURIS Çevrimiçi"
+        is ServerHealthState.Waking -> "Motor uyanıyor · Dokun yenile"
+        is ServerHealthState.Offline -> "Çevrimdışı · Dokun tekrar dene"
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(SurfaceAlt)
+            .border(1.dp, BorderLight, RoundedCornerShape(999.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(dotColor)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun HeaderSection() {
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(800, easing = FastOutSlowInEasing),
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
         label = "header_alpha"
     )
 
@@ -311,69 +423,113 @@ private fun HeaderSection() {
             .alpha(alpha),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Logo/Icon
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(GradientStart, GradientMiddle, GradientEnd)
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
-                tint = TextOnPrimary,
-                modifier = Modifier.size(36.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Title with gradient
         Text(
-            text = "AI Müzik Tespiti",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "AURIS Ses Laboratuvarı",
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = TextPrimary,
+            textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "Müziğin yapay zeka tarafından mı oluşturulduğunu tespit edin",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
+            text = "Dinle, dosya seç veya link yapıştır. LightGBM + Wav2Vec2 anında doğrulasın.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextMuted,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = 12.dp)
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
+@Composable
+private fun OrbitalMicStage(
+    onStartRecording: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "mic_halo")
+    val haloScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "halo_scale"
+    )
 
-        // Model info badge
-        Row(
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, Border)
+    ) {
+        Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(Primary.copy(alpha = 0.12f))
-                .border(1.dp, Primary.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxWidth()
+                .padding(vertical = 36.dp, horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Success)
-            )
+                modifier = Modifier.size(176.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(164.dp)
+                        .scale(haloScale)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(Primary.copy(alpha = 0.22f), Color.Transparent)
+                            )
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(126.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, Primary.copy(alpha = 0.35f), CircleShape)
+                        .background(SurfaceAlt),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(104.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(listOf(GradientStart, GradientMiddle, GradientEnd))
+                            )
+                            .clickable(onClick = onStartRecording),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Dinlemeyi Başlat",
+                            tint = TextOnPrimary,
+                            modifier = Modifier.size(44.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Text(
-                text = "4-Tower Ensemble Analiz",
-                style = MaterialTheme.typography.labelMedium,
-                color = Primary,
-                fontWeight = FontWeight.Medium
+                text = "Dinlemek İçin Dokun",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Çalan müziği 30 saniyeye kadar yakala ve anında analiz et",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -387,92 +543,50 @@ private fun UploadCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Surface),
         border = BorderStroke(1.dp, Border)
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(modifier = Modifier.padding(24.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(156.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(SurfaceAlt)
+                    .border(
+                        width = 1.5.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(BorderLight, Primary.copy(alpha = 0.45f), BorderLight)
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable(onClick = onUploadClick),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Primary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Default.CloudUpload,
+                        imageVector = Icons.Default.AudioFile,
                         contentDescription = null,
                         tint = Primary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(42.dp)
                     )
-                }
-                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Dosya Yükle",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        text = "Ses dosyası seç (MP3, WAV, FLAC, M4A)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "MP3, WAV, FLAC, M4A",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "En fazla 30 MB · Orijinal dosya adı korunur",
+                        style = MaterialTheme.typography.labelSmall,
                         color = TextMuted
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Upload Zone
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceAlt)
-                    .border(
-                        width = 1.5.dp,
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                BorderLight.copy(alpha = 0.5f),
-                                Primary.copy(alpha = 0.3f),
-                                BorderLight.copy(alpha = 0.5f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onUploadClick
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AudioFile,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Dosya seçmek için dokunun",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
-                    )
-                }
-            }
-
-            // Selected File
             AnimatedVisibility(
                 visible = selectedFileName != null,
                 enter = fadeIn() + expandVertically(),
@@ -480,13 +594,12 @@ private fun UploadCard(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(16.dp))
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(SurfaceElevated)
-                            .padding(16.dp),
+                            .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -495,19 +608,19 @@ private fun UploadCard(
                             tint = Primary,
                             modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = selectedFileName ?: "",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
                     GradientButton(
-                        text = "Analiz Et",
+                        text = "Dosyayı Analiz Et",
                         onClick = onAnalyzeFile,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -521,131 +634,72 @@ private fun UploadCard(
 private fun UrlInputCard(
     urlInput: String,
     onUrlChange: (String) -> Unit,
+    onPasteClipboard: () -> Unit,
     onAnalyzeUrl: () -> Unit,
     isEnabled: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Surface),
         border = BorderStroke(1.dp, Border)
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Secondary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
+                Text(
+                    text = "YouTube · TikTok · Instagram · SoundCloud",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextMuted
+                )
+                TextButton(onClick = onPasteClipboard) {
                     Icon(
-                        imageVector = Icons.Default.Link,
+                        imageVector = Icons.Default.ContentPaste,
                         contentDescription = null,
-                        tint = Secondary,
-                        modifier = Modifier.size(22.dp)
+                        tint = Primary,
+                        modifier = Modifier.size(16.dp)
                     )
-                }
-                Column {
-                    Text(
-                        text = "URL ile Analiz",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "YouTube, TikTok, Instagram, SoundCloud",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
-                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Yapıştır", color = Primary)
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = urlInput,
                 onValueChange = onUrlChange,
-                modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        "YouTube, TikTok, Instagram veya SoundCloud linki...",
+                        "https://www.youtube.com/watch?v=...",
                         color = TextMuted
                     )
                 },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                shape = RoundedCornerShape(14.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { if (isEnabled) onAnalyzeUrl() }),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Primary,
-                    unfocusedBorderColor = Border,
-                    cursorColor = Primary,
-                    focusedContainerColor = SurfaceAlt,
-                    unfocusedContainerColor = SurfaceAlt
+                    unfocusedBorderColor = BorderLight,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = Primary
                 ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (isEnabled) onAnalyzeUrl() }),
-                singleLine = true
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             GradientButton(
-                text = "Analiz Et",
+                text = "Bağlantıyı Analiz Et",
                 onClick = onAnalyzeUrl,
                 enabled = isEnabled,
                 modifier = Modifier.fillMaxWidth()
             )
-        }
-    }
-}
-
-@Composable
-private fun SupportedFormatsCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Primary.copy(alpha = 0.06f)),
-        border = BorderStroke(1.dp, Primary.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
-                tint = Primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column {
-                Text(
-                    text = "Nasıl Çalışır?",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Ses dosyasını yükleyin veya YouTube linki yapıştırın. " +
-                        "4-Tower ensemble sistemi (wav2vec2 + akustik özellikler + CLAP + FST) " +
-                        "ile analiz edilir.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    lineHeight = 20.sp
-                )
-            }
         }
     }
 }
@@ -680,38 +734,27 @@ private fun ProcessingView(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
+            .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Animated processing indicator
         Box(
             modifier = Modifier
                 .size(120.dp)
                 .scale(pulse),
             contentAlignment = Alignment.Center
         ) {
-            // Outer glow
             Canvas(modifier = Modifier.size(120.dp)) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Primary.copy(alpha = 0.3f),
-                            Color.Transparent
-                        )
+                        colors = listOf(Primary.copy(alpha = 0.3f), Color.Transparent)
                     )
                 )
             }
 
-            // Rotating arc
             Canvas(modifier = Modifier.size(100.dp)) {
                 drawArc(
                     brush = Brush.sweepGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Primary,
-                            Accent,
-                            Color.Transparent
-                        )
+                        colors = listOf(Color.Transparent, Primary, Accent, Color.Transparent)
                     ),
                     startAngle = rotation,
                     sweepAngle = 120f,
@@ -720,7 +763,6 @@ private fun ProcessingView(
                 )
             }
 
-            // Center icon
             Box(
                 modifier = Modifier
                     .size(60.dp)
@@ -729,7 +771,7 @@ private fun ProcessingView(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.MusicNote,
+                    imageVector = Icons.Default.GraphicEq,
                     contentDescription = null,
                     tint = Primary,
                     modifier = Modifier.size(28.dp)
@@ -737,7 +779,7 @@ private fun ProcessingView(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "Analiz Ediliyor",
@@ -755,17 +797,15 @@ private fun ProcessingView(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // Processing steps
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Surface)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Surface),
+            border = BorderStroke(1.dp, Border)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
+            Column(modifier = Modifier.padding(22.dp)) {
                 ProcessingStep.entries.forEach { step ->
                     ProcessingStepRow(
                         step = step,
@@ -773,7 +813,7 @@ private fun ProcessingView(
                         isCompleted = step.ordinal < currentStep.ordinal
                     )
                     if (step != ProcessingStep.entries.last()) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                     }
                 }
             }
@@ -790,11 +830,11 @@ private fun ProcessingStepRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(30.dp)
                 .clip(CircleShape)
                 .background(
                     when {
@@ -810,10 +850,10 @@ private fun ProcessingStepRow(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
                     tint = TextOnPrimary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 isActive -> CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                     color = TextOnPrimary,
                     strokeWidth = 2.dp
                 )
@@ -843,13 +883,13 @@ private fun ResultView(
     result: AnalysisResult,
     onAnalyzeAnother: () -> Unit
 ) {
+    val context = LocalContext.current
     val isAI = result.isAiGenerated
     val resultColor = if (isAI) Warning else Success
+    val threshold = result.xai?.threshold ?: 0.4316f
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Result Card
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Verdict + Animated Radial Gauge Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
@@ -857,26 +897,16 @@ private fun ResultView(
             border = BorderStroke(1.dp, resultColor.copy(alpha = 0.4f))
         ) {
             Column(
-                modifier = Modifier.padding(28.dp),
+                modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Result Icon
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(resultColor.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isAI) Icons.Default.Warning else Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = resultColor,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
+                AurisVerdictGauge(
+                    probability = result.confidence,
+                    threshold = threshold,
+                    accentColor = resultColor
+                )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = if (isAI) "AI Tarafından Oluşturulmuş" else "İnsan Tarafından Yapılmış",
@@ -886,23 +916,13 @@ private fun ResultView(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // AI Probability + Confidence Band
-                Text(
-                    text = "AI Olasılığı: %${(result.confidence * 100).toInt()}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-
                 result.xai?.confidenceBand?.labelTr?.takeIf { it.isNotBlank() }?.let { bandLabel ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(999.dp))
                             .background(resultColor.copy(alpha = 0.14f))
-                            .border(1.dp, resultColor.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .border(1.dp, resultColor.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
                             .padding(horizontal = 12.dp, vertical = 5.dp)
                     ) {
                         Text(
@@ -913,57 +933,51 @@ private fun ResultView(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Decision source & model
                 Text(
                     text = "${result.modelVersion} · ${result.decisionSource}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(22.dp))
 
-                // Metrics Grid
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    MetricItem(
-                        label = "İşlem Süresi",
-                        value = "${String.format("%.1f", result.processingTime)}s"
-                    )
-                    MetricItem(
-                        label = "Sample Rate",
-                        value = "${result.audioInfo.sampleRate / 1000}kHz"
-                    )
-                    MetricItem(
-                        label = "Uzunluk",
-                        value = "${result.audioInfo.duration.toInt()}s"
-                    )
+                    MetricItem("İşlem", "${String.format(Locale.US, "%.1f", result.processingTime)}s")
+                    MetricItem("Örnekleme", "${result.audioInfo.sampleRate / 1000}kHz")
+                    MetricItem("Süre", "${result.audioInfo.duration.toInt()}s")
                 }
             }
         }
 
-        // Feature Details Card
-        Spacer(modifier = Modifier.height(16.dp))
+        // Whole-Track Waveform Heat Timeline if available
+        result.timeline?.let { timeline ->
+            if (timeline.peaks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                TimelineWaveformCard(timeline = timeline)
+            }
+        }
 
+        // Acoustic Details Card
+        Spacer(modifier = Modifier.height(16.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = Surface),
             border = BorderStroke(1.dp, Border)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Analiz Detayları",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 FeatureBar("Spektral Düzenlilik", result.features.spectralRegularity)
                 Spacer(modifier = Modifier.height(8.dp))
                 FeatureBar("Zamansal Örüntüler", result.features.temporalPatterns)
@@ -973,13 +987,12 @@ private fun ResultView(
                 if (result.features.indicators.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Göstergeler: ${result.features.indicators.joinToString(", ")}",
+                        text = "Göstergeler: ${result.features.indicators.joinToString(" · ")}",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextMuted
                     )
                 }
 
-                // Vocal analysis if available
                 result.vocalAnalysis?.let { vocal ->
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -992,19 +1005,16 @@ private fun ResultView(
                     FeatureBar("Vokal AI Skoru", vocal.vocalAiScore)
                     Spacer(modifier = Modifier.height(4.dp))
                     FeatureBar("Pitch Kararlılığı", vocal.pitchStabilityScore)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    FeatureBar("Vibrato Düzenliliği", vocal.vibratoRegularityScore)
                 }
             }
         }
 
-        // XAI & Meta-classifier details
+        // XAI & Meta-classifier Card
         if (result.xai != null || result.metaClassifier != null) {
             Spacer(modifier = Modifier.height(16.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = Surface),
                 border = BorderStroke(1.dp, Border)
             ) {
@@ -1019,25 +1029,21 @@ private fun ResultView(
                     result.xai?.let { xai ->
                         val activeVotes = xai.modelVotes.filter { it.available }
                         if (activeVotes.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             activeVotes.forEach { vote ->
+                                val tone = if (vote.vote == "ai") Warning else Success
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = vote.name,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary
-                                    )
-                                    val voteTone = if (vote.vote == "ai") Warning else Success
+                                    Text(vote.name, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                                     Text(
                                         text = "${if (vote.vote == "ai") "AI" else "İnsan"} · %${(vote.probability * 100).toInt()}",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Medium,
-                                        color = voteTone
+                                        color = tone
                                     )
                                 }
                             }
@@ -1054,9 +1060,9 @@ private fun ResultView(
                             xai.topContributions.take(4).forEach { contrib ->
                                 val tone = if (contrib.direction == "towards_ai") Warning else Success
                                 val signed = if (contrib.shapValue >= 0f) {
-                                    "+${String.format("%.2f", contrib.shapValue)}"
+                                    "+${String.format(Locale.US, "%.2f", contrib.shapValue)}"
                                 } else {
-                                    String.format("%.2f", contrib.shapValue)
+                                    String.format(Locale.US, "%.2f", contrib.shapValue)
                                 }
                                 Row(
                                     modifier = Modifier
@@ -1064,17 +1070,8 @@ private fun ResultView(
                                         .padding(vertical = 2.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = contrib.label.ifBlank { contrib.name },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary
-                                    )
-                                    Text(
-                                        text = signed,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        color = tone
-                                    )
+                                    Text(contrib.label.ifBlank { contrib.name }, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                                    Text(signed, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = tone)
                                 }
                             }
                         }
@@ -1094,14 +1091,213 @@ private fun ResultView(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
-        // New Analysis Button
         GradientButton(
             text = "Yeni Analiz",
             onClick = onAnalyzeAnother,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedButton(
+            onClick = {
+                val verdictText = if (isAI) "AI Tarafından Oluşturulmuş" else "İnsan Tarafından Yapılmış"
+                val shareBody = buildString {
+                    append("AURIS Analiz Sonucu: $verdictText\n")
+                    append("AI Olasılığı: %${(result.confidence * 100).toInt()}\n")
+                    append("Model: ${result.modelVersion} (${result.decisionSource})\n")
+                    append("https://hasan-arthur-altuntas.xyz/ai-music-detection")
+                }
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareBody)
+                }
+                context.startActivity(Intent.createChooser(sendIntent, "Sonucu Paylaş"))
+            },
+            border = BorderStroke(1.dp, Primary.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Sonucu Paylaş", color = Primary)
+        }
+    }
+}
+
+@Composable
+private fun AurisVerdictGauge(
+    probability: Float,
+    threshold: Float,
+    accentColor: Color
+) {
+    val target = probability.coerceIn(0f, 1f)
+    val animatedProb by animateFloatAsState(
+        targetValue = target,
+        animationSpec = tween(durationMillis = 850, easing = FastOutSlowInEasing),
+        label = "gauge_sweep"
+    )
+
+    Box(
+        modifier = Modifier.size(152.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(144.dp)) {
+            val strokePx = 12.dp.toPx()
+            val inset = strokePx / 2f
+            val arcSize = Size(size.width - strokePx, size.height - strokePx)
+            val startAngle = 150f
+            val fullSweep = 240f
+
+            // Track
+            drawArc(
+                color = SurfaceAlt,
+                startAngle = startAngle,
+                sweepAngle = fullSweep,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+
+            // Active Arc
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(Success, accentColor, accentColor)
+                ),
+                startAngle = startAngle,
+                sweepAngle = fullSweep * animatedProb,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+
+            // Threshold notch
+            val thresholdRad = Math.toRadians((startAngle + fullSweep * threshold.coerceIn(0.05f, 0.95f)).toDouble())
+            val radius = arcSize.width / 2f
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val rInner = radius - strokePx * 0.7f
+            val rOuter = radius + strokePx * 0.7f
+            drawLine(
+                color = Primary,
+                startAngleOffset(cx, cy, rInner, thresholdRad),
+                startAngleOffset(cx, cy, rOuter, thresholdRad),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "%${(probability * 100).toInt()}",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = accentColor
+            )
+            Text(
+                text = "AI Olasılığı",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary
+            )
+        }
+    }
+}
+
+private fun startAngleOffset(cx: Float, cy: Float, r: Float, rad: Double): Offset =
+    Offset(cx + (r * cos(rad)).toFloat(), cy + (r * sin(rad)).toFloat())
+
+@Composable
+private fun TimelineWaveformCard(timeline: AnalysisTimeline) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, Border)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Parça Zaman Çizelgesi",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "${timeline.flaggedCount}/${timeline.scoredCount} AI pencere",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(68.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SurfaceAlt)
+                    .padding(horizontal = 8.dp, vertical = 10.dp)
+            ) {
+                val peaks = timeline.peaks
+                if (peaks.isNotEmpty()) {
+                    val count = peaks.size
+                    val barGap = 2.dp.toPx()
+                    val barW = ((size.width - barGap * (count - 1)) / count).coerceAtLeast(2f)
+                    val segCount = timeline.segments.size
+                    peaks.forEachIndexed { idx, amp ->
+                        val seg = if (segCount > 0) {
+                            timeline.segments[((idx.toFloat() / count) * segCount).toInt().coerceIn(0, segCount - 1)]
+                        } else null
+                        val barColor = when {
+                            seg?.isAi == true -> Warning
+                            seg?.state == "ok" -> Success
+                            else -> TextMuted.copy(alpha = 0.45f)
+                        }
+                        val h = (amp.coerceIn(0.08f, 1f) * size.height)
+                        val x = idx * (barW + barGap)
+                        val y = (size.height - h) / 2f
+                        drawRoundRect(
+                            color = barColor,
+                            topLeft = Offset(x, y),
+                            size = Size(barW, h),
+                            cornerRadius = CornerRadius(barW / 2f, barW / 2f)
+                        )
+                    }
+                }
+                // Baseline subtle center rule
+                drawLine(
+                    color = BorderLight,
+                    start = Offset(0f, size.height / 2f),
+                    end = Offset(size.width, size.height / 2f),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Ortalama AI yoğunluğu %${(timeline.meanProbability * 100).toInt()} · Eşik %${(timeline.threshold * 100).toInt()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted
+            )
+        }
     }
 }
 
@@ -1112,17 +1308,8 @@ private fun FeatureBar(label: String, value: Float) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
-            )
-            Text(
-                text = "${(value * 100).toInt()}%",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary
-            )
+            Text(label, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = TextPrimary)
         }
         Spacer(modifier = Modifier.height(4.dp))
         Box(
@@ -1137,121 +1324,17 @@ private fun FeatureBar(label: String, value: Float) {
                     .fillMaxWidth(fraction = value.coerceIn(0f, 1f))
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(GradientStart, GradientEnd)
-                        )
-                    )
+                    .background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd)))
             )
         }
     }
 }
 
 @Composable
-private fun MetricItem(
-    label: String,
-    value: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted
-        )
-    }
-}
-
-@Composable
-private fun MicrophoneCard(
-    onStartRecording: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        border = BorderStroke(1.dp, Border)
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Accent.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = Accent,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = "Canlı Ses Analizi",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Shazam gibi — çalan müziği dinle ve analiz et",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Big microphone button
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(GradientStart, GradientMiddle, GradientEnd)
-                        )
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onStartRecording
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Mic,
-                    contentDescription = "Kayıt Başlat",
-                    tint = TextOnPrimary,
-                    modifier = Modifier.size(44.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Dokunarak kaydı başlat (maks. 30 sn)",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextMuted
-            )
-        }
+private fun MetricItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }
 
@@ -1266,20 +1349,14 @@ private fun RecordingView(
     val pulse by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(600), repeatMode = RepeatMode.Reverse),
         label = "pulse"
     )
 
     val ringAlpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
         targetValue = 0.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
         label = "ring"
     )
 
@@ -1289,29 +1366,12 @@ private fun RecordingView(
             .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Dinleniyor...",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-
+        Text("Dinleniyor...", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(modifier = Modifier.height(8.dp))
+        Text("Çalan müziği mikrofona tutun", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(modifier = Modifier.height(36.dp))
 
-        Text(
-            text = "Çalan müziği mikrofona tutun",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Animated recording indicator
-        Box(
-            modifier = Modifier.size(160.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Outer pulsing ring
+        Box(modifier = Modifier.size(160.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
                     .size((120 + amplitude * 40).dp)
@@ -1319,85 +1379,42 @@ private fun RecordingView(
                     .clip(CircleShape)
                     .background(Error.copy(alpha = ringAlpha * amplitude.coerceAtLeast(0.3f)))
             )
-
-            // Middle ring
             Box(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
                     .background(Error.copy(alpha = 0.2f))
             )
-
-            // Stop button
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
                     .background(Error)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onStop
-                    ),
+                    .clickable(onClick = onStop),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Stop,
-                    contentDescription = "Kaydı Durdur",
+                    contentDescription = "Durdur ve Analiz Et",
                     tint = TextOnPrimary,
                     modifier = Modifier.size(36.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // Timer
         val minutes = elapsedSeconds / 60
         val seconds = elapsedSeconds % 60
         Text(
-            text = String.format("%d:%02d / 0:30", minutes, seconds),
+            text = String.format(Locale.US, "%d:%02d / 0:30", minutes, seconds),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Amplitude bars visualization
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 40.dp)
-                .height(40.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val barCount = 20
-            for (i in 0 until barCount) {
-                val distance = Math.abs(i - barCount / 2).toFloat() / (barCount / 2)
-                val barHeight = (amplitude * (1f - distance * 0.6f) * 40).coerceAtLeast(4f)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(barHeight.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(GradientStart, GradientEnd)
-                            )
-                        )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Durdurmak için kırmızı butona dokunun",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted
-        )
+        Text("Analize göndermek için kırmızı butona dokunun", style = MaterialTheme.typography.bodySmall, color = TextMuted)
     }
 }
 
@@ -1409,7 +1426,7 @@ private fun ErrorView(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
+            .padding(vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -1427,46 +1444,27 @@ private fun ErrorView(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Bir Hata Oluştu",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-
+        Spacer(modifier = Modifier.height(20.dp))
+        Text("Bir Hata Oluştu", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp)
+            modifier = Modifier.padding(horizontal = 24.dp)
         )
-
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         Button(
             onClick = onRetry,
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = SurfaceElevated
-            ),
-            modifier = Modifier.height(56.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = SurfaceElevated),
+            modifier = Modifier.height(54.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Tekrar Dene",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
+            Text("Tekrar Dene", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         }
     }
 }
