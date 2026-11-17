@@ -5,11 +5,14 @@ import com.crowncode.data.remote.dto.AnalysisJobDto
 import com.crowncode.data.remote.dto.AnalyzeResponseDto
 import com.crowncode.domain.model.AnalysisFeatures
 import com.crowncode.domain.model.AnalysisResult
+import com.crowncode.domain.model.AnalysisTimeline
 import com.crowncode.domain.model.AudioInfo
 import com.crowncode.domain.model.ConfidenceBand
 import com.crowncode.domain.model.FeatureContribution
 import com.crowncode.domain.model.MetaClassifierInfo
 import com.crowncode.domain.model.ModelVote
+import com.crowncode.domain.model.ServerHealthState
+import com.crowncode.domain.model.TimelineSegment
 import com.crowncode.domain.model.VocalAnalysis
 import com.crowncode.domain.model.XaiExplanation
 import com.crowncode.domain.repository.AnalysisRepository
@@ -31,6 +34,35 @@ class AnalysisRepositoryImpl @Inject constructor(
     companion object {
         private const val POLL_INTERVAL_MS = 1500L
         private const val MAX_POLLS = 180 // ~4.5 minutes max for long queued audio
+    }
+
+    override suspend fun checkHealth(): ServerHealthState {
+        return try {
+            val res = api.getHealth()
+            val xai = res.models?.xai
+            val warmDone = res.models?.warm?.done ?: (xai?.available == true)
+            if (res.status == "ok" && warmDone) {
+                ServerHealthState.Online(
+                    ensembleCount = xai?.ensembleLoaded ?: 0,
+                    bestModel = xai?.bestModel ?: "LightGBM",
+                    warmDone = true
+                )
+            } else if (res.status == "ok") {
+                ServerHealthState.Waking
+            } else {
+                ServerHealthState.Offline("Sunucu durumu: ${res.status}")
+            }
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (e: HttpException) {
+            if (e.code() == 503 || e.code() == 502) {
+                ServerHealthState.Waking
+            } else {
+                ServerHealthState.Offline("HTTP ${e.code()}")
+            }
+        } catch (e: Exception) {
+            ServerHealthState.Offline(e.localizedMessage ?: "Bağlantı yok")
+        }
     }
 
     override suspend fun analyzeUrl(
@@ -218,6 +250,27 @@ class AnalysisRepositoryImpl @Inject constructor(
                     modelVersion = m.modelVersion,
                     indicators = m.indicators
                 )
+            },
+            timeline = r.timeline?.let { tl ->
+                if (tl.peaks.isNotEmpty() || tl.segments.isNotEmpty()) AnalysisTimeline(
+                    durationSec = tl.durationSec,
+                    totalSec = tl.totalSec,
+                    threshold = tl.threshold,
+                    peaks = tl.peaks,
+                    segments = tl.segments.map { seg ->
+                        TimelineSegment(
+                            index = seg.index,
+                            startSec = seg.start,
+                            endSec = seg.end,
+                            state = seg.state,
+                            probability = seg.probability,
+                            isAi = seg.isAi
+                        )
+                    },
+                    scoredCount = tl.summary.scoredCount,
+                    flaggedCount = tl.summary.flaggedCount,
+                    meanProbability = tl.summary.meanProbability
+                ) else null
             },
             warnings = warnings
         )
