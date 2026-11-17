@@ -1,5 +1,16 @@
 package com.crowncode.domain.model
 
+sealed interface ServerHealthState {
+    data object Checking : ServerHealthState
+    data class Online(
+        val ensembleCount: Int,
+        val bestModel: String,
+        val warmDone: Boolean
+    ) : ServerHealthState
+    data object Waking : ServerHealthState
+    data class Offline(val reason: String) : ServerHealthState
+}
+
 data class AnalysisResult(
     val isAiGenerated: Boolean,
     val confidence: Float,
@@ -13,6 +24,7 @@ data class AnalysisResult(
     val xai: XaiExplanation? = null,
     val towerScores: Map<String, Float> = emptyMap(),
     val metaClassifier: MetaClassifierInfo? = null,
+    val timeline: AnalysisTimeline? = null,
     val warnings: List<String> = emptyList()
 )
 
@@ -76,4 +88,24 @@ data class MetaClassifierInfo(
     val confidence: Float,
     val modelVersion: String,
     val indicators: List<String>
+)
+
+data class TimelineSegment(
+    val index: Int,
+    val startSec: Float,
+    val endSec: Float,
+    val state: String,
+    val probability: Float?,
+    val isAi: Boolean?
+)
+
+data class AnalysisTimeline(
+    val durationSec: Float,
+    val totalSec: Float,
+    val threshold: Float,
+    val peaks: List<Float>,
+    val segments: List<TimelineSegment>,
+    val scoredCount: Int,
+    val flaggedCount: Int,
+    val meanProbability: Float
 )
