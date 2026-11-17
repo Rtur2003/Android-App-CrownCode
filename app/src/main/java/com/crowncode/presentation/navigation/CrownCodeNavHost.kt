@@ -11,8 +11,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.crowncode.presentation.screens.aimusic.AiMusicDetectionScreen
-import com.crowncode.presentation.screens.auth.LoginScreen
-import com.crowncode.presentation.screens.auth.SignUpScreen
 import com.crowncode.presentation.screens.history.HistoryScreen
 import com.crowncode.presentation.screens.welcome.WelcomeScreen
 
@@ -25,10 +23,9 @@ fun CrownCodeNavHost() {
         startDestination = Route.Welcome,
         modifier = Modifier.fillMaxSize()
     ) {
-        // Welcome Screen
         composable<Route.Welcome>(
-            enterTransition = { fadeIn(tween(600)) },
-            exitTransition = { fadeOut(tween(300)) }
+            enterTransition = { fadeIn(tween(500)) },
+            exitTransition = { fadeOut(tween(250)) }
         ) {
             WelcomeScreen(
                 onStartAnalysis = {
@@ -42,71 +39,6 @@ fun CrownCodeNavHost() {
             )
         }
 
-        // Login Screen
-        composable<Route.Login>(
-            enterTransition = {
-                slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Left,
-                    tween(300)
-                )
-            },
-            exitTransition = { fadeOut(tween(200)) },
-            popEnterTransition = { fadeIn(tween(200)) },
-            popExitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right,
-                    tween(300)
-                )
-            }
-        ) {
-            LoginScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onLoginSuccess = {
-                    navController.navigate(Route.AiMusicDetection) {
-                        popUpTo(Route.Welcome) { inclusive = true }
-                    }
-                },
-                onNavigateToSignUp = {
-                    navController.navigate(Route.SignUp) {
-                        popUpTo(Route.Login) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        // SignUp Screen
-        composable<Route.SignUp>(
-            enterTransition = {
-                slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Left,
-                    tween(300)
-                )
-            },
-            exitTransition = { fadeOut(tween(200)) },
-            popEnterTransition = { fadeIn(tween(200)) },
-            popExitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Right,
-                    tween(300)
-                )
-            }
-        ) {
-            SignUpScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onSignUpSuccess = {
-                    navController.navigate(Route.AiMusicDetection) {
-                        popUpTo(Route.Welcome) { inclusive = true }
-                    }
-                },
-                onNavigateToLogin = {
-                    navController.navigate(Route.Login) {
-                        popUpTo(Route.SignUp) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        // AI Music Detection Screen
         composable<Route.AiMusicDetection>(
             enterTransition = {
                 slideIntoContainer(
@@ -123,7 +55,6 @@ fun CrownCodeNavHost() {
             )
         }
 
-        // History Screen
         composable<Route.History>(
             enterTransition = {
                 slideIntoContainer(
