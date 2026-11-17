@@ -3,6 +3,44 @@ package com.crowncode.data.remote.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class HealthResponseDto(
+    val status: String = "unknown",
+    val models: HealthModelsDto? = null
+)
+
+@Serializable
+data class HealthModelsDto(
+    val xai: HealthXaiDto? = null,
+    val wav2vec2: HealthLayerDto? = null,
+    val clap: HealthLayerDto? = null,
+    val meta: HealthMetaDto? = null,
+    val warm: HealthWarmDto? = null
+)
+
+@Serializable
+data class HealthXaiDto(
+    val available: Boolean = false,
+    val bestModel: String = "LightGBM",
+    val ensembleLoaded: Int = 0
+)
+
+@Serializable
+data class HealthLayerDto(
+    val loaded: Boolean = false,
+    val initialized: Boolean = false
+)
+
+@Serializable
+data class HealthMetaDto(
+    val trained: Boolean = false
+)
+
+@Serializable
+data class HealthWarmDto(
+    val done: Boolean = false
+)
+
+@Serializable
 data class AnalysisJobDto(
     val jobId: String? = null,
     val sourceType: String = "file",
@@ -50,7 +88,8 @@ data class AnalysisResultDto(
     val vocalAnalysis: VocalAnalysisDto? = null,
     val xai: XaiExplanationDto? = null,
     val towerScores: Map<String, Float> = emptyMap(),
-    val metaClassifier: MetaClassifierDto? = null
+    val metaClassifier: MetaClassifierDto? = null,
+    val timeline: TimelineDto? = null
 )
 
 @Serializable
@@ -131,6 +170,37 @@ data class MetaClassifierDto(
     val modelVersion: String,
     val towerScores: Map<String, Float> = emptyMap(),
     val indicators: List<String> = emptyList()
+)
+
+@Serializable
+data class TimelineDto(
+    val durationSec: Float = 0f,
+    val totalSec: Float = 0f,
+    val truncated: Boolean = false,
+    val threshold: Float = 0.4316f,
+    val peaks: List<Float> = emptyList(),
+    val segments: List<TimelineSegmentDto> = emptyList(),
+    val summary: TimelineSummaryDto = TimelineSummaryDto()
+)
+
+@Serializable
+data class TimelineSegmentDto(
+    val index: Int = 0,
+    val start: Float = 0f,
+    val end: Float = 0f,
+    val state: String = "ok",
+    val probability: Float? = null,
+    val isAi: Boolean? = null
+)
+
+@Serializable
+data class TimelineSummaryDto(
+    val scoredCount: Int = 0,
+    val flaggedCount: Int = 0,
+    val scoredSec: Float = 0f,
+    val aiShare: Float = 0f,
+    val meanProbability: Float = 0f,
+    val maxProbability: Float = 0f
 )
 
 @Serializable
